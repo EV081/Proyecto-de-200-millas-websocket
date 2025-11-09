@@ -47,92 +47,39 @@ functions:
           method: POST
           path: /delivery/entrega-delivery
 
-  # === Lambda invocada por Step Functions (ACK) ===
+  # === Lambda que recibirá el evento (ACK) ===
   AckStatus:
     handler: src/ack_status.lambda_handler
 
 resources:
   Resources:
 
-    # Rol de ejecución para Step Functions (permite invocar la Lambda AckStatus)
-    SfnExecutionRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: states.amazonaws.com
-              Action: sts:AssumeRole
-        Policies:
-          - PolicyName: InvokeAckLambda
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: Allow
-                  Action: lambda:InvokeFunction
-                  Resource: !GetAtt AckStatusLambdaFunction.Arn
-
-    # State Machine (por ahora, un solo Task -> AckStatus)
-    OrderStatusStateMachine:
-      Type: AWS::StepFunctions::StateMachine
-      Properties:
-        RoleArn: !GetAtt SfnExecutionRole.Arn
-        StateMachineName: !Sub "${AWS::StackName}-OrderStatus"
-        Definition:
-          Comment: "Flujo de recepción de estados: EventBridge -> SFN -> AckStatus"
-          StartAt: Ack
-          States:
-            Ack:
-              Type: Task
-              Resource: arn:aws:states:::lambda:invoke
-              OutputPath: "$.Payload"
-              Parameters:
-                FunctionName: !GetAtt AckStatusLambdaFunction.Arn
-                Payload.$: "$.detail"   # pasa SOLO el 'detail' del evento
-              End: true
-
-    # Rol para que EventBridge pueda arrancar la State Machine
-    EventBridgeToSfnRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: events.amazonaws.com
-              Action: sts:AssumeRole
-        Policies:
-          - PolicyName: StartSfn
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: Allow
-                  Action: states:StartExecution
-                  Resource: !Ref OrderStatusStateMachine
-
-    # Regla de EventBridge: solo tus eventos y solo los 4 estados
+    # --- Regla EventBridge: escucha SOLO tus 4 estados ---
     OrderStatusRule:
       Type: AWS::Events::Rule
       Properties:
         Name: !Sub "${AWS::StackName}-OrderStatusRule"
         EventBusName: default
         EventPattern:
-          source:
-            - 200millas.delivery
+          source: [ "200millas.delivery" ]
           detail-type:
             - COCINA_ASIGNADA
             - COCINA_COMPLETA
             - EMPAQUETADO_COMPLETO
             - ENTREGA_DELIVERY
         Targets:
-          - Id: SfnStart
-            Arn: !Ref OrderStatusStateMachine
-            RoleArn: !GetAtt EventBridgeToSfnRole.Arn
+          - Id: AckLambda
+            Arn: !GetAtt AckStatusLambdaFunction.Arn
+
+    # --- Permiso para que EventBridge pueda invocar la Lambda ---
+    EventInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref AckStatusLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: events.amazonaws.com
+        SourceArn: !GetAtt OrderStatusRule.Arn
 
 custom:
-  # (opcional para v4; sin plugins)
   pythonRequirements:
     slim: true
