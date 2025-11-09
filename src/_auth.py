@@ -1,3 +1,4 @@
+# src/_auth.py
 import os, boto3
 from datetime import datetime
 
@@ -14,4 +15,8 @@ def validate_token(token: str):
         return None
     if datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S") > item["expires"]:
         return None
-    return {"tenant_id": item["tenant_id"], "user_id": item["user_id"]}
+    return {
+        "tenant_id": item["tenant_id"],
+        "user_id": item["user_id"],
+        "role": item.get("role", "customer")
+    }

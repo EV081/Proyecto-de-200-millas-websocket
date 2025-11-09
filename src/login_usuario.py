@@ -20,21 +20,21 @@ def lambda_handler(event, context):
 
         db = t_usuarios.get_item(Key={"tenant_id": tenant_id, "user_id": user_id})
         item = db.get("Item")
-        if not item:
-            return response(403, {"error": "Usuario no existe"})
+        if not item or hash_password(password) != item.get("password_hash"):
+            return response(403, {"error": "Credenciales inválidas"})
 
-        if hash_password(password) != item.get("password_hash"):
-            return response(403, {"error": "Password incorrecto"})
-
+        role = item.get("role", "customer")  # compatibilidad con usuarios antiguos
         token = str(uuid.uuid4())
         expires_dt = datetime.utcnow() + timedelta(minutes=60)
+
         t_tokens.put_item(Item={
             "token": token,
             "tenant_id": tenant_id,
             "user_id": user_id,
+            "role": role,
             "expires": expires_dt.strftime("%Y-%m-%d %H:%M:%S")
         })
 
-        return response(200, {"token": token, "expires": expires_dt.isoformat()})
+        return response(200, {"token": token, "expires": expires_dt.isoformat(), "role": role})
     except Exception as e:
         return response(500, {"error": str(e)})

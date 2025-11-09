@@ -10,7 +10,6 @@ def lambda_handler(event, context):
     try:
         body = event.get("body")
         token = None
-        # Permite invocación directa (payload JSON) y vía API (proxy)
         if isinstance(body, str):
             token = (json.loads(body).get("token") or "").strip()
         elif isinstance(event, dict) and "token" in event:
@@ -28,6 +27,11 @@ def lambda_handler(event, context):
         if now > item.get("expires"):
             return response(403, {"error": "Token expirado"})
 
-        return response(200, {"message": "Token válido", "tenant_id": item.get("tenant_id"), "user_id": item.get("user_id")})
+        return response(200, {
+            "message": "Token válido",
+            "tenant_id": item.get("tenant_id"),
+            "user_id": item.get("user_id"),
+            "role": item.get("role", "customer")
+        })
     except Exception as e:
         return response(500, {"error": str(e)})
