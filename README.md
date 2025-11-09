@@ -52,7 +52,7 @@ Body (raw JSON):
 
 ```json
 {
-  "tenant_id": "6200millas",
+  "tenant_id": "200millas",
   "user_id": "chef@6200millas.pe",
   "password": "Secreta123"
 }
@@ -76,7 +76,7 @@ Body (raw JSON):
 
 ```json
 {
-  "tenant_id": "6200millas",
+  "tenant_id": "200millas",
   "user_id": "chef@6200millas.pe",
   "password": "Secreta123"
 }
