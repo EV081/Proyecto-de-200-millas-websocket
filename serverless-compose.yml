@@ -1,9 +1,9 @@
 services:
-  service-employees:
+  200millas-employees:
     path: services/employees
 
-  service-users:
+  200millas-users:
     path: services/users
 
-  service-products:
+  200millas-products:
     path: services/products
