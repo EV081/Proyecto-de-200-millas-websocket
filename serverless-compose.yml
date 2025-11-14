@@ -1,9 +1,9 @@
 services:
   service-employees:
-    path: ./employees
+    path: services/employees
 
   service-users:
-    path: ./users
+    path: services/users
 
   service-products:
-    path: ./products
+    path: services/products
