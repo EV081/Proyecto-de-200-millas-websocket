@@ -14,7 +14,7 @@ provider:
     TOKENS_EMPLOYEE_TABLE: ${cf:millas-employees-${self:provider.stage}.TOKENS_EMPLOYEE_TABLE_NAME}
     PRODUCTS_TABLE: t_product-${self:provider.stage}
     PRODUCTS_BUCKET: products-200millas-${self:provider.stage}
-    VALIDAR_TOKEN_FN: ${cf:millas-employees-${self:provider.stage}.ValidarEmployeeTokenAccesoArn}
+    VALIDAR_TOKEN_FN_ARN: ${cf:millas-employees-${self:provider.stage}.ValidarEmployeeTokenAccesoArn}
   httpApi:
     cors: true
 
