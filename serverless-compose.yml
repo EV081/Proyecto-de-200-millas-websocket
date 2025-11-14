@@ -9,3 +9,5 @@ services:
 
   service-products:
     path: services/products
+    dependsOn:
+      - service-employees
