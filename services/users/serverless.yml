@@ -30,7 +30,7 @@ functions:
           method: POST
           path: /users/login-user
   ValidarUserTokenAcceso:
-    handler: services.users.validar_token.lambda_handler
+    handler: services.users.validar_token_users.lambda_handler
 
 resources:
   Resources:

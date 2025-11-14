@@ -30,7 +30,7 @@ functions:
           method: POST
           path: /employees/login-employee
   ValidarEmployeeTokenAcceso:
-    handler: services.employees.validar_token.lambda_handler
+    handler: services.employees.validar_token_employee.lambda_handler
 
 resources:
   Resources:
