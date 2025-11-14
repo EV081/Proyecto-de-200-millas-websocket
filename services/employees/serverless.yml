@@ -63,7 +63,7 @@ resources:
 
   Outputs:
     ValidarEmployeeTokenAccesoArn:
-      Value: !GetAtt ValidarEmployeeTokenAcceso.Arn
+      Value: !GetAtt ValidarEmployeeTokenAcceso.Arn  
       Description: ARN de la función ValidarEmployeeTokenAcceso
     TOKENS_EMPLOYEE_TABLE_NAME:
       Value: t_tokens_employee_acceso-${self:provider.stage}
