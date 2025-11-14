@@ -2,7 +2,7 @@ import os
 import boto3
 from datetime import datetime, timezone
 
-TOKENS_TABLE = os.environ["TOKENS_TABLE"]
+TOKENS_TABLE_USERS = os.environ["TOKENS_TABLE_USERS"]
 
 def lambda_handler(event, context):
     # Entrada (json)
@@ -11,7 +11,7 @@ def lambda_handler(event, context):
         return {"statusCode": 403, "body": "Token faltante"}
 
     dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(TOKENS_TABLE)
+    table = dynamodb.Table(TOKENS_TABLE_USERS)
     try:
         response = table.get_item(Key={'token': token})
     except Exception as e:

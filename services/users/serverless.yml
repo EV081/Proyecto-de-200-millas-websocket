@@ -1,0 +1,63 @@
+org: 200millas
+service: 200millas-users
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  stage: dev
+  memorySize: 256
+  timeout: 20
+  iam:
+    role: arn:aws:iam::468251834706:role/LabRole
+  environment:
+    USERS_TABLE: t_users-${self:provider.stage}
+    TOKENS_TABLE_USERS: t_tokens_users_acceso-${self:provider.stage}
+  httpApi:
+    cors: true
+    
+functions:
+  RegisterUser:
+    handler: services.users.register_user.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/register-user
+  LoginUsuario:
+    handler: services.users.login_usuario.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/login-user
+  ValidarUserTokenAcceso:
+    handler: services.users.validar_token.lambda_handler
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: t_users-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: user_id
+            KeyType: RANGE
+    TokensUsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: t_tokens_users_acceso-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: token
+            AttributeType: S
+        KeySchema:
+          - AttributeName: token
+            KeyType: HASH
+
