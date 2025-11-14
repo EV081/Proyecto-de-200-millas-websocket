@@ -4,7 +4,7 @@ import base64
 import boto3
 from decimal import Decimal
 from botocore.exceptions import ClientError
-from src.common.auth import get_token_from_headers, validate_token_and_get_claims, require_admin
+from services.products.common.auth import get_token_from_headers, validate_token_and_get_claims
 
 PRODUCTS_BUCKET = os.environ.get("PRODUCTS_BUCKET")
 PRODUCTS_TABLE = os.environ["PRODUCTS_TABLE"]
@@ -20,11 +20,6 @@ def lambda_handler(event, context):
     auth = validate_token_and_get_claims(token)
     if auth.get("statusCode") != 200:
         return _resp(403, {"error": "Acceso no autorizado"})
-
-    role = require_admin(token)
-    if role.get("statusCode") != 200:
-        err = role.get("body", {}).get("error", "Acceso no autorizado")
-        return _resp(403, {"error": err})
     
     body = _parse_body(event)
     tenant_id = body.get("tenant_id")
