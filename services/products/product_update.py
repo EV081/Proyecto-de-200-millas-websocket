@@ -3,15 +3,29 @@ from decimal import Decimal
 from services.products.common.auth import get_token_from_headers, validate_token_and_get_claims
 
 PRODUCTS_TABLE = os.environ["PRODUCTS_TABLE"]
+VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION = os.environ["VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION"]
 
 def _resp(code, body):
     return {"statusCode": code, "body": json.dumps(body, ensure_ascii=False, default=str)}
 
 def lambda_handler(event, context):
-    token = get_token_from_headers(event)
-    auth = validate_token_and_get_claims(token)
-    if auth.get("statusCode") == 403:
-        return _resp(403, {"error":"Acceso no autorizado"})
+    print(event)
+    
+    # Inicio - Proteger el Lambda
+    token = event['headers']['Authorization']
+    lambda_client = boto3.client('lambda')    
+    payload_string = '{ "token": "' + token +  '" }'
+    invoke_response = lambda_client.invoke(FunctionName=VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION,
+                                           InvocationType='RequestResponse',
+                                           Payload = payload_string)
+    response = json.loads(invoke_response['Payload'].read())
+    print(response)
+    if response['statusCode'] == 403:
+        return {
+            'statusCode' : 403,
+            'status' : 'Forbidden - Acceso No Autorizado'
+        }
+    # Fin - Proteger el Lambda   
 
     data = json.loads(event.get("body") or "{}", parse_float=Decimal)
     tenant_id = data.pop("tenant_id", None)

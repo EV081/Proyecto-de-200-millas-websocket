@@ -1,20 +1,18 @@
-org: 200millas
 service: service-products
 
 provider:
   name: aws
   runtime: python3.13
   region: us-east-1
-  stage: dev
   memorySize: 256
   timeout: 20
   iam:
     role: arn:aws:iam::468251834706:role/LabRole
   environment:
-    TOKENS_EMPLOYEE_TABLE: ${cf:millas-employees-${self:provider.stage}.TOKENS_EMPLOYEE_TABLE_NAME}
-    PRODUCTS_TABLE: t_product-${self:provider.stage}
-    PRODUCTS_BUCKET: products-200millas-${self:provider.stage}
-    VALIDAR_TOKEN_FN_ARN: ${cf:millas-employees-${self:provider.stage}.ValidarEmployeeTokenAccesoArn}
+    TOKENS_EMPLOYEE_TABLE: t_tokens_employee_acceso
+    PRODUCTS_TABLE: t_product
+    PRODUCTS_BUCKET: products-200millas
+    VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION: service-products-${self:provider.stage}-ValidarEmployeeTokenAcceso
   httpApi:
     cors: true
 
@@ -25,8 +23,6 @@ functions:
       - httpApi:
           method: POST
           path: /productos/product-create
-    environment:
-      VALIDAR_TOKEN_FN_ARN: ${self:provider.environment.VALIDAR_TOKEN_FN_ARN}
     
   UpdateProduct: 
     handler: services.products.product_update.lambda_handler
@@ -34,8 +30,6 @@ functions:
       - httpApi:
           method: PUT
           path: /productos/product-update 
-    environment:
-      VALIDAR_TOKEN_FN_ARN: ${self:provider.environment.VALIDAR_TOKEN_FN_ARN}
 
   DeleteProduct:
     handler: services.products.product_delete.lambda_handler
@@ -43,8 +37,6 @@ functions:
       - httpApi:
           method: DELETE
           path: /productos/product-delete
-    environment:
-      VALIDAR_TOKEN_FN_ARN: ${self:provider.environment.VALIDAR_TOKEN_FN_ARN}
 
   ProductID:
     handler: services.products.product_id.lambda_handler
@@ -52,6 +44,7 @@ functions:
       - httpApi:
           method: POST 
           path: /productos/product-id
+
   ListProduct:
     handler: services.products.product_list.lambda_handler
     events:
@@ -59,31 +52,5 @@ functions:
           method: POST
           path: /productos/product-list
 
-resources:
-  Resources:
-    ProductosTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: t_product-${self:provider.stage}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: tenant_id
-            AttributeType: S
-          - AttributeName: product_id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: tenant_id
-            KeyType: HASH
-          - AttributeName: product_id
-            KeyType: RANGE
-
-    ProductosBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: products-200millas-${self:provider.stage}
-        CorsConfiguration:
-          CorsRules:
-            - AllowedHeaders: ["*"]
-              AllowedMethods: ["PUT", "GET", "POST", "HEAD"]
-              AllowedOrigins: ["*"]
-              ExposedHeaders: ["ETag"]
+  ValidarEmployeeTokenAcceso:
+    handler: services.products.validar_token_employee.lambda_handler

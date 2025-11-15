@@ -1,13 +1,25 @@
-org: 200millas  
+org: 200millas
+service: my-multi-service-project
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  memorySize: 256
+  timeout: 20
 
 services:
+  service-resources:
+    path: services/resources
   service-employees:
     path: services/employees
-
+    dependsOn:
+      - service-resources
   service-users:
     path: services/users
-
+    dependsOn:
+      - service-resources
   service-products:
     path: services/products
     dependsOn:
-      - service-employees
+      - service-resources
