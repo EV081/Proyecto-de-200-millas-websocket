@@ -39,7 +39,6 @@ def lambda_handler(event, context):
 
         t_tokens_employee.put_item(Item={
             "token": token,
-            "tenant_id": tenant_id,
             "user_id": user_id,
             "expires": expires_dt.strftime("%Y-%m-%d %H:%M:%S")
         })
