@@ -16,16 +16,16 @@ provider:
     
 functions:
   RegisterUser:
-    handler: users.register_user.lambda_handler
+    handler: register_user.lambda_handler
     events:
       - httpApi:
           method: POST
           path: /users/register
   LoginUsuario:
-    handler: users.login_usuario.lambda_handler
+    handler: login_usuario.lambda_handler
     events:
       - httpApi:
           method: POST
           path: /users/login
   ValidarUserTokenAcceso:
-    handler: users.validar_token_users.lambda_handler
+    handler: validar_token_users.lambda_handler

@@ -9,17 +9,17 @@ provider:
   timeout: 20
 
 services:
-  service-resources:
+  resources:
     path: resources
-  service-employees:
+  employees:
     path: employees
     dependsOn:
       - service-resources
-  service-users:
+  users:
     path: users
     dependsOn:
       - service-resources
-  service-products:
+  products:
     path: products
     dependsOn:
       - service-resources
