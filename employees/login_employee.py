@@ -2,8 +2,8 @@ import os, json, uuid, boto3
 from datetime import datetime, timedelta
 from common import hash_password, response
 
-EMPLOYEE_TABLE  = os.environ.get["EMPLOYEE_TABLE"]
-TOKENS_TABLE_EMPLOYEES = os.environ.get["TOKENS_TABLE_EMPLOYEES"]
+EMPLOYEE_TABLE  = os.environ.get("EMPLOYEE_TABLE")
+TOKENS_TABLE_EMPLOYEES = os.environ.get("TOKENS_TABLE_EMPLOYEES")
 dynamodb = boto3.resource("dynamodb")
 t_employee = dynamodb.Table(EMPLOYEE_TABLE)
 t_tokens_employee   = dynamodb.Table(TOKENS_TABLE_EMPLOYEES)

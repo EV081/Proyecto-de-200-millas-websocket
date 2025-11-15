@@ -2,7 +2,7 @@ import os, json, boto3
 from datetime import datetime
 from common import hash_password, response
 
-EMPLOYEE_TABLE = os.environ.get["EMPLOYEE_TABLE"]
+EMPLOYEE_TABLE = os.environ.get("EMPLOYEE_TABLE")
 dynamodb = boto3.resource("dynamodb")
 t_employee = dynamodb.Table(EMPLOYEE_TABLE)
 
