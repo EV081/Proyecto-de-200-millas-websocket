@@ -1,12 +1,15 @@
-import os, json, uuid, boto3
+import os
+import json
+import uuid
+import boto3
 from datetime import datetime, timedelta
 from common import hash_password, response
 
-EMPLOYEE_TABLE  = os.environ.get("EMPLOYEE_TABLE")
+EMPLOYEE_TABLE = os.environ.get("EMPLOYEE_TABLE")
 TOKENS_EMPLOYEE_TABLE = os.environ.get("TOKENS_EMPLOYEE_TABLE")
 dynamodb = boto3.resource("dynamodb")
 t_employee = dynamodb.Table(EMPLOYEE_TABLE)
-t_tokens_employee   = dynamodb.Table(TOKENS_EMPLOYEE_TABLE)
+t_tokens_employee = dynamodb.Table(TOKENS_EMPLOYEE_TABLE)
 
 def lambda_handler(event, context):
     if not EMPLOYEE_TABLE or not TOKENS_EMPLOYEE_TABLE:
@@ -15,21 +18,26 @@ def lambda_handler(event, context):
     try:
         body = json.loads(event.get("body") or "{}")
         tenant_id = (body.get("tenant_id") or "").strip()
-        user_id   = (body.get("user_id") or "").strip()
-        password  = (body.get("password") or "")
+        user_id = (body.get("user_id") or "").strip()
+        password = (body.get("password") or "").strip()
 
         if not (tenant_id and user_id and password):
             return response(400, {"error": "tenant_id, user_id y password son requeridos"})
 
         db = t_employee.get_item(Key={"tenant_id": tenant_id, "user_id": user_id})
         item = db.get("Item")
-        if not item or hash_password(password) != item.get("password_hash"):
+        
+        if not item:
+            return response(403, {"error": "Usuario no encontrado"})
+        
+        hashed_password_bd = item.get("password_hash")
+        if not hashed_password_bd or hash_password(password) != hashed_password_bd:
             return response(403, {"error": "Credenciales inválidas"})
 
         token = str(uuid.uuid4())
         expires_dt = datetime.utcnow() + timedelta(minutes=60)
 
-        t_employee.put_item(Item={
+        t_tokens_employee.put_item(Item={
             "token": token,
             "tenant_id": tenant_id,
             "user_id": user_id,
@@ -37,5 +45,6 @@ def lambda_handler(event, context):
         })
 
         return response(200, {"token": token, "expires": expires_dt.isoformat()})
+
     except Exception as e:
         return response(500, {"error": str(e)})
