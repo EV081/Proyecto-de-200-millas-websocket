@@ -10,13 +10,13 @@
 			"name": "Users",
 			"item": [
 				{
-					"name": "Register",
+					"name": "Register User",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"tenant_id\": \"200millas\",\n  \"user_id\": \"chef1@6200millas.pe\",\n  \"password\": \"Secreta123\",\n  \"role\" : \"customer\"\n}",
+							"raw": "{\n  \"tenant_id\": \"200millas\",\n  \"user_id\": \"yaritza@elmer.com\",\n  \"password\": \"123456\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -24,31 +24,31 @@
 							}
 						},
 						"url": {
-							"raw": "https://9lj78ttuue.execute-api.us-east-1.amazonaws.com/usuarios/crear",
+							"raw": "https://5u1x1lmc46.execute-api.us-east-1.amazonaws.com/users/register",
 							"protocol": "https",
 							"host": [
-								"9lj78ttuue",
+								"5u1x1lmc46",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
 								"com"
 							],
 							"path": [
-								"usuarios",
-								"crear"
+								"users",
+								"register"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Login",
+					"name": "Login User",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"tenant_id\": \"200millas\",\n  \"user_id\": \"chef@6200millas.pe\",\n  \"password\": \"Secreta123\"\n}\n",
+							"raw": "{\n  \"tenant_id\": \"200millas\",\n  \"user_id\": \"yaritza@elmer.com\",\n  \"password\": \"123456\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -56,17 +56,17 @@
 							}
 						},
 						"url": {
-							"raw": "https://9lj78ttuue.execute-api.us-east-1.amazonaws.com/usuarios/login",
+							"raw": "https://5u1x1lmc46.execute-api.us-east-1.amazonaws.com/users/login",
 							"protocol": "https",
 							"host": [
-								"9lj78ttuue",
+								"5u1x1lmc46",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
 								"com"
 							],
 							"path": [
-								"usuarios",
+								"users",
 								"login"
 							]
 						}
@@ -85,7 +85,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "69ebf3e9-f61a-4ca5-a894-2878b4ecdfc0",
+								"value": "2a3a4b55-f2f2-4e40-852e-a72533ba890e",
 								"type": "text"
 							}
 						],
@@ -99,10 +99,10 @@
 							}
 						},
 						"url": {
-							"raw": "https://9lj78ttuue.execute-api.us-east-1.amazonaws.com/productos/crear",
+							"raw": "https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/create",
 							"protocol": "https",
 							"host": [
-								"9lj78ttuue",
+								"9qyel2o126",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
@@ -110,7 +110,7 @@
 							],
 							"path": [
 								"productos",
-								"crear"
+								"create"
 							]
 						}
 					},
@@ -123,13 +123,13 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "69ebf3e9-f61a-4ca5-a894-2878b4ecdfc0",
+								"value": "2a3a4b55-f2f2-4e40-852e-a72533ba890e",
 								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"restaurante_1\",\n    \"product_id\": \"pro1\",\n    \"name\": \"ceviche de conchas negras actualizado\",\n    \"price\": 40,\n    \"stock\" : 50\n}",
+							"raw": "{\n    \"tenant_id\": \"restaurante_1\",\n    \"product_id\": \"pro2\",\n    \"name\": \"ceviche de conchas negras actualizado\",\n    \"price\": 40,\n    \"stock\" : 50\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -137,10 +137,10 @@
 							}
 						},
 						"url": {
-							"raw": "https://9lj78ttuue.execute-api.us-east-1.amazonaws.com/productos/actualizar",
+							"raw": "https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/update",
 							"protocol": "https",
 							"host": [
-								"9lj78ttuue",
+								"9qyel2o126",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
@@ -148,7 +148,7 @@
 							],
 							"path": [
 								"productos",
-								"actualizar"
+								"update"
 							]
 						}
 					},
@@ -161,13 +161,13 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "8014ffae-ef86-4777-ad5e-646e1e298aed",
+								"value": "2a3a4b55-f2f2-4e40-852e-a72533ba890e",
 								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"restaurante_1\",\n    \"product_id\": \"pro1\"\n}",
+							"raw": "{\n    \"tenant_id\": \"restaurante_1\",\n    \"product_id\": \"pro2\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -175,10 +175,10 @@
 							}
 						},
 						"url": {
-							"raw": "https://294v2n34q4.execute-api.us-east-1.amazonaws.com/productos/eliminar",
+							"raw": "https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/delete",
 							"protocol": "https",
 							"host": [
-								"294v2n34q4",
+								"9qyel2o126",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
@@ -186,7 +186,7 @@
 							],
 							"path": [
 								"productos",
-								"eliminar"
+								"delete"
 							]
 						}
 					},
@@ -199,7 +199,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"restaurante_1\",\n    \"product_id\": \"pro1\"\n}",
+							"raw": "{\n    \"tenant_id\": \"restaurante_1\",\n    \"product_id\": \"pro2\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -207,10 +207,10 @@
 							}
 						},
 						"url": {
-							"raw": "https://9lj78ttuue.execute-api.us-east-1.amazonaws.com/productos/buscar",
+							"raw": "https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/id",
 							"protocol": "https",
 							"host": [
-								"9lj78ttuue",
+								"9qyel2o126",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
@@ -218,7 +218,7 @@
 							],
 							"path": [
 								"productos",
-								"buscar"
+								"id"
 							]
 						}
 					},
@@ -239,10 +239,10 @@
 							}
 						},
 						"url": {
-							"raw": "https://9lj78ttuue.execute-api.us-east-1.amazonaws.com/productos/listar",
+							"raw": "https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/list",
 							"protocol": "https",
 							"host": [
-								"9lj78ttuue",
+								"9qyel2o126",
 								"execute-api",
 								"us-east-1",
 								"amazonaws",
@@ -250,7 +250,76 @@
 							],
 							"path": [
 								"productos",
-								"listar"
+								"list"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Employee",
+			"item": [
+				{
+					"name": "Register Employee",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tenant_id\": \"200millas\",\n  \"user_id\": \"chef1@200millas.pe\",\n  \"password\": \"Secreta123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://lgmxqmwhz8.execute-api.us-east-1.amazonaws.com/employees/register",
+							"protocol": "https",
+							"host": [
+								"lgmxqmwhz8",
+								"execute-api",
+								"us-east-1",
+								"amazonaws",
+								"com"
+							],
+							"path": [
+								"employees",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Employee",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tenant_id\": \"200millas\",\n  \"user_id\": \"chef1@200millas.pe\",\n  \"password\": \"Secreta123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://lgmxqmwhz8.execute-api.us-east-1.amazonaws.com/employees/login",
+							"protocol": "https",
+							"host": [
+								"lgmxqmwhz8",
+								"execute-api",
+								"us-east-1",
+								"amazonaws",
+								"com"
+							],
+							"path": [
+								"employees",
+								"login"
 							]
 						}
 					},
