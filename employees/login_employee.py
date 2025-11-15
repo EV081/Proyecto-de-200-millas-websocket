@@ -3,12 +3,15 @@ from datetime import datetime, timedelta
 from common import hash_password, response
 
 EMPLOYEE_TABLE  = os.environ.get("EMPLOYEE_TABLE")
-TOKENS_TABLE_EMPLOYEES = os.environ.get("TOKENS_TABLE_EMPLOYEES")
+TOKENS_EMPLOYEE_TABLE = os.environ.get("TOKENS_EMPLOYEE_TABLE")
 dynamodb = boto3.resource("dynamodb")
 t_employee = dynamodb.Table(EMPLOYEE_TABLE)
-t_tokens_employee   = dynamodb.Table(TOKENS_TABLE_EMPLOYEES)
+t_tokens_employee   = dynamodb.Table(TOKENS_EMPLOYEE_TABLE)
 
 def lambda_handler(event, context):
+    if not EMPLOYEE_TABLE or not TOKENS_EMPLOYEE_TABLE:
+        raise ValueError("Las variables de entorno no están configuradas correctamente.")
+
     try:
         body = json.loads(event.get("body") or "{}")
         tenant_id = (body.get("tenant_id") or "").strip()
