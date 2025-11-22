@@ -1,25 +1,30 @@
-org: 200millas
-service: my-multi-service-project
-
-provider:
-  name: aws
-  runtime: python3.13
-  region: us-east-1
-  memorySize: 256
-  timeout: 20
+org: ${env:ORG_NAME}
+app: 200millas-backend
+stage: dev
 
 services:
+  dependencias:
+    path: Dependencias
+
   service-resources:
     path: resources
+    dependsOn:
+      - dependencias
+
   service-employees:
     path: employees
     dependsOn:
       - service-resources
+      - dependencias
+
   service-users:
     path: users
     dependsOn:
       - service-resources
+      - dependencias
+
   service-products:
     path: products
     dependsOn:
       - service-resources
+      - dependencias

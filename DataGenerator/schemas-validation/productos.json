@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Productos",
+  "type": "object",
+  "x-dynamodb": {
+    "partition_key": "local_id",
+    "sort_key": "nombre"
+  },
+  "properties": {
+    "local_id": { "type": "string" },
+    "nombre": { "type": "string", "minLength": 1 },
+    "precio": { "type": "number", "minimum": 0 },
+    "descripcion": { "type": "string" },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "Promos Fast",
+        "Express",
+        "Promociones",
+        "Sopas Power",
+        "Bowls Del Tigre",
+        "Leche de Tigre",
+        "Ceviches",
+        "Fritazo",
+        "Mostrimar",
+        "Box Marino",
+        "Duos Marinos",
+        "Trios Marinos",
+        "Dobles",
+        "Rondas Marinas",
+        "Mega Marino",
+        "Familiares"
+      ]
+    },
+    "stock": { "type": "integer", "minimum": 0 },
+    "imagen_url": { "type": "string", "format": "uri" }
+  },
+  "required": ["local_id", "nombre", "precio", "categoria", "stock", "imagen_url"],
+  "additionalProperties": false
+}

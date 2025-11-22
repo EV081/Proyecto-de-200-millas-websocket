@@ -11,6 +11,8 @@ provider:
   environment:
     EMPLOYEE_TABLE: t_employee
     TOKENS_EMPLOYEE_TABLE: t_tokens_employee_acceso
+  layers:
+    - ${cf:millas-dependencias-dev.PythonDependenciesLayerExport}  
   httpApi:
     cors: true
 

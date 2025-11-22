@@ -14,6 +14,8 @@ provider:
     PRODUCTS_TABLE: t_product
     PRODUCTS_BUCKET: products-200millas
     VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION: service-products-${self:provider.stage}-ValidarEmployeeTokenAcceso
+  layers:
+    - ${cf:millas-dependencias-dev.PythonDependenciesLayerExport}  
   httpApi:
     cors: true
 

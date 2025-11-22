@@ -7,34 +7,54 @@ VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION = os.environ.get("VALIDAR_EMPLOYEE_TOKEN_
 def _resp(code, body):
     return {"statusCode": code, "body": json.dumps(body, ensure_ascii=False, default=str)}
 
+def _to_decimal(obj):
+    """
+    Convierte recursivamente int/float -> Decimal.
+    Deja bool, None, str, Decimal, etc. tal cual.
+    Esto evita el error 'Float types are not supported' en DynamoDB.
+    """
+    if isinstance(obj, dict):
+        return {k: _to_decimal(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_decimal(x) for x in obj]
+    if isinstance(obj, bool) or obj is None:
+        return obj
+    if isinstance(obj, Decimal):
+        return obj
+    if isinstance(obj, (int, float)):
+        return Decimal(str(obj))
+    return obj
+
 def lambda_handler(event, context):
     print(event)
     
-    # Inicio - Proteger el Lambda
     token = event['headers']['authorization']
     lambda_client = boto3.client('lambda')    
     payload_string = '{ "token": "' + token +  '" }'
-    invoke_response = lambda_client.invoke(FunctionName=VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION,
-                                           InvocationType='RequestResponse',
-                                           Payload = payload_string)
+    invoke_response = lambda_client.invoke(
+        FunctionName=VALIDAR_EMPLOYEE_TOKEN_ACCESS_FUNCTION,
+        InvocationType='RequestResponse',
+        Payload=payload_string
+    )
     response = json.loads(invoke_response['Payload'].read())
     print(response)
     if response['statusCode'] == 403:
         return {
-            'statusCode' : 403,
-            'status' : 'Forbidden - Acceso No Autorizado'
+            'statusCode': 403,
+            'status': 'Forbidden - Acceso No Autorizado'
         }
-    # Fin - Proteger el Lambda   
 
-    data = json.loads(event.get("body") or "{}", parse_float=Decimal)
+    raw_data = json.loads(event.get("body") or "{}", parse_float=Decimal)
+    data = _to_decimal(raw_data)
+
     tenant_id = data.pop("tenant_id", None)
     product_id = data.pop("product_id", None)
     if not tenant_id:
-        return _resp(400, {"error":"Falta tenant_id en el body"})
+        return _resp(400, {"error": "Falta tenant_id en el body"})
     if not product_id:
-        return _resp(400, {"error":"Falta product_id en el body"})
+        return _resp(400, {"error": "Falta product_id en el body"})
     if not data:
-        return _resp(400, {"error":"Body vacío; nada que actualizar"})
+        return _resp(400, {"error": "Body vacío; nada que actualizar"})
 
     expr_names, expr_values, sets = {}, {}, []
     for i, (k, v) in enumerate(data.items(), start=1):
@@ -53,4 +73,5 @@ def lambda_handler(event, context):
         ConditionExpression="attribute_exists(tenant_id) AND attribute_exists(product_id)",
         ReturnValues="ALL_NEW"
     )
+
     return _resp(200, {"ok": True, "item": res.get("Attributes")})
