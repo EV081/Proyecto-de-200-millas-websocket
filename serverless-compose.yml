@@ -1,4 +1,4 @@
-org: 200millas
+org: daros
 service: my-multi-service-project
 
 provider:
