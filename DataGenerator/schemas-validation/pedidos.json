@@ -3,10 +3,15 @@
   "title": "Pedidos",
   "type": "object",
   "x-dynamodb": {
-    "partition_key": "local_id",
-    "sort_key": "pedido_id"
+    "partition_key": "tenant_id",
+    "sort_key": "pedido_id",
+    "global_secondary_indexes": [
+      { "name": "by_local", "partition_key": "local_id", "sort_key": "pedido_id" },
+      { "name": "by_usuario", "partition_key": "usuario_correo", "sort_key": "pedido_id" }
+    ]
   },
   "properties": {
+    "tenant_id": { "type": "string", "minLength": 1 },
     "local_id": { "type": "string" },
     "pedido_id": { "type": "string" },
     "usuario_correo": { "type": "string", "format": "email" },
@@ -14,10 +19,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "properties": {
-          "nombre": { "type": "string" },
-          "cantidad": { "type": "integer", "minimum": 1 }
-        },
+        "properties": { "nombre": { "type": "string" }, "cantidad": { "type": "integer", "minimum": 1 } },
         "required": ["nombre", "cantidad"],
         "additionalProperties": false
       },
@@ -25,25 +27,10 @@
     },
     "costo": { "type": "number", "minimum": 0 },
     "direccion": { "type": "string" },
-    "fecha_entrega_aproximada": { 
-      "type": ["string", "null"], 
-      "format": "date-time" 
-    },
-    "estado": {
-      "type": "string",
-      "enum": ["procesando", "cocinando", "empacando", "enviando", "recibido"]
-    }
+    "fecha_entrega_aproximada": { "type": ["string", "null"], "format": "date-time" },
+    "estado": { "type": "string", "enum": ["procesando", "cocinando", "empacando", "enviando", "recibido"] }
   },
-  "required": [
-    "local_id", 
-    "pedido_id", 
-    "usuario_correo", 
-    "direccion", 
-    "costo", 
-    "estado"
-  ],
-  "anyOf": [
-    { "required": ["productos"] }
-  ],
+  "required": ["tenant_id", "local_id", "pedido_id", "usuario_correo", "direccion", "costo", "estado"],
+  "anyOf": [{ "required": ["productos"] }],
   "additionalProperties": false
 }

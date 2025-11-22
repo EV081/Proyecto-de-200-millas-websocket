@@ -12,7 +12,9 @@ import random as random_module
 # Cargar variables de entorno
 load_dotenv()
 
-# Configuración de AWS
+# ------------------------------------------------------------
+# Configuración AWS
+# ------------------------------------------------------------
 AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
 AWS_ACCOUNT_ID = os.getenv('AWS_ACCOUNT_ID')
 
@@ -20,7 +22,9 @@ dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 dynamodb_client = boto3.client('dynamodb', region_name=AWS_REGION)
 s3_client = boto3.client('s3', region_name=AWS_REGION)
 
-# Nombres de las tablas (definidos en .env o en variables de entorno)
+# ------------------------------------------------------------
+# Nombres de tablas desde .env (algunas pueden no estar definidas)
+# ------------------------------------------------------------
 TABLE_USUARIOS = os.getenv('TABLE_USUARIOS')
 TABLE_EMPLEADOS = os.getenv('TABLE_EMPLEADOS')
 TABLE_LOCALES = os.getenv('TABLE_LOCALES')
@@ -29,57 +33,79 @@ TABLE_PEDIDOS = os.getenv('TABLE_PEDIDOS')
 TABLE_HISTORIAL_ESTADOS = os.getenv('TABLE_HISTORIAL_ESTADOS')
 TABLE_TOKENS_EMPLEADOS  = os.getenv('TABLE_TOKENS_EMPLEADOS')
 TABLE_TOKENS_USUARIOS   = os.getenv('TABLE_TOKENS_USUARIOS')
-# Nombre del bucket
+
+# Bucket S3 (para verificación; la carga de imágenes no se hace aquí)
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
 # Carpeta con los datos JSON
 DATA_DIR = os.path.join(os.path.dirname(__file__), "example-data")
 
-# Mapeo de archivos JSON a tablas y claves, según tus schemas
-TABLE_MAPPING = {
-    "usuarios.json": {
+# ------------------------------------------------------------
+# Mapeo de archivos JSON -> tablas/keys (dinámico: solo si hay nombre)
+# ------------------------------------------------------------
+TABLE_MAPPING = {}
+
+if TABLE_USUARIOS:
+    TABLE_MAPPING["usuarios.json"] = {
         "table_name": TABLE_USUARIOS,
-        "pk": "correo",       # PK según schema Usuarios
-        "sk": None
-    },
-    "empleados.json": {
-        "table_name": TABLE_EMPLEADOS,
-        "pk": "local_id",     # PK según schema Empleados
-        "sk": "dni"           # SK según schema Empleados
-    },
-    "locales.json": {
-        "table_name": TABLE_LOCALES,
-        "pk": "local_id",     # PK según schema Locales
-        "sk": None
-    },
-    "productos.json": {
-        "table_name": TABLE_PRODUCTOS,
-        "pk": "local_id",     # PK según schema Productos
-        "sk": "nombre"        # SK según schema Productos
-    },
-    "pedidos.json": {
-        "table_name": TABLE_PEDIDOS,
-        "pk": "local_id",     # PK según schema Pedidos
-        "sk": "pedido_id"     # SK según schema Pedidos
-    },
-    "historial_estados.json": {
-        "table_name": TABLE_HISTORIAL_ESTADOS,
-        "pk": "pedido_id",     # PK según schema Historial_Estados
-        "sk": "estado_id"      # SK según schema Historial_Estados     
-    },
-    "tokens_usuarios.json": {
-        "table_name": TABLE_TOKENS_USUARIOS,
-        "pk": "token",        # PK según schema Tokens
-        "sk": None
-    },
-    "tokens_empleados.json": {
-        "table_name": TABLE_TOKENS_EMPLEADOS,
-        "pk": "token",        # PK según schema Tokens
+        "pk": "correo",
         "sk": None
     }
-}
 
+if TABLE_EMPLEADOS:
+    TABLE_MAPPING["empleados.json"] = {
+        "table_name": TABLE_EMPLEADOS,
+        "pk": "local_id",
+        "sk": "dni"
+    }
 
+if TABLE_LOCALES:
+    TABLE_MAPPING["locales.json"] = {
+        "table_name": TABLE_LOCALES,
+        "pk": "local_id",
+        "sk": None
+    }
+
+if TABLE_PRODUCTOS:
+    TABLE_MAPPING["productos.json"] = {
+        "table_name": TABLE_PRODUCTOS,
+        "pk": "local_id",
+        "sk": "nombre"
+    }
+
+# Pedidos multi-tenant (PK=tenant_id, SK=pedido_id)
+if TABLE_PEDIDOS:
+    TABLE_MAPPING["pedidos.json"] = {
+        "table_name": TABLE_PEDIDOS,
+        "pk": "tenant_id",
+        "sk": "pedido_id"
+    }
+
+if TABLE_HISTORIAL_ESTADOS:
+    TABLE_MAPPING["historial_estados.json"] = {
+        "table_name": TABLE_HISTORIAL_ESTADOS,
+        "pk": "pedido_id",
+        "sk": "estado_id"
+    }
+
+# Opcionales: tablas de tokens (solo si existen en .env)
+if TABLE_TOKENS_USUARIOS:
+    TABLE_MAPPING["tokens_usuarios.json"] = {
+        "table_name": TABLE_TOKENS_USUARIOS,
+        "pk": "token",
+        "sk": None
+    }
+
+if TABLE_TOKENS_EMPLEADOS:
+    TABLE_MAPPING["tokens_empleados.json"] = {
+        "table_name": TABLE_TOKENS_EMPLEADOS,
+        "pk": "token",
+        "sk": None
+    }
+
+# ------------------------------------------------------------
+# Utilidades
+# ------------------------------------------------------------
 def convert_float_to_decimal(obj):
     """Convierte float a Decimal recursivamente (requerido por DynamoDB)."""
     if isinstance(obj, list):
@@ -186,7 +212,6 @@ def batch_write_items(table, items, table_name):
                                     'item': str(item)[:100],
                                     'error': str(e)
                                 })
-                # si llegamos aquí, el batch se escribió
                 return local_success, local_errors, local_error_details
                 
             except ClientError as e:
@@ -238,7 +263,6 @@ def batch_write_items(table, items, table_name):
         print(f"   ❌ Error: {str(e)}")
         return success_count, total_items - success_count, error_details
     
-    # Mostrar detalles de errores si los hay
     if error_details and len(error_details) <= 5:
         print(f"\n   ⚠️  Detalles de errores:")
         for i, err in enumerate(error_details[:5], 1):
@@ -260,9 +284,8 @@ def populate_table(filename, table_config):
         print(f"   ⚠️  No hay nombre de tabla configurado para {filename} (revisa tus variables de entorno)")
         return False
     
-    # Verificar que la tabla existe
     if not table_exists(table_name):
-        print(f"   ⚠️  Tabla '{table_name}' no existe. Debe crearse primero (Serverless o create_all_resources).")
+        print(f"   ⚠️  Tabla '{table_name}' no existe. Debe crearse primero.")
         return False
     
     print(f"   ✅ Tabla '{table_name}' existe")
@@ -282,7 +305,7 @@ def populate_table(filename, table_config):
     
     print(f"   📊 Total de items: {len(items)}")
     
-    # Validar que los items tengan las claves requeridas
+    # Validar claves requeridas
     if items:
         first_item = items[0]
         if pk_name not in first_item:
@@ -314,11 +337,9 @@ def verify_credentials():
     try:
         session = boto3.Session()
         credentials = session.get_credentials()
-        
         if credentials is None:
             print("❌ No se encontraron credenciales de AWS (perfil, variables de entorno o ~/.aws/credentials)")
             return False
-        
         return True
     except Exception as e:
         print(f"❌ Error al verificar credenciales: {e}")
@@ -344,14 +365,10 @@ def create_s3_bucket():
                         Bucket=S3_BUCKET_NAME,
                         CreateBucketConfiguration={'LocationConstraint': AWS_REGION}
                     )
-                
-                # Habilitar versionado
                 s3_client.put_bucket_versioning(
                     Bucket=S3_BUCKET_NAME,
                     VersioningConfiguration={'Status': 'Enabled'}
                 )
-                
-                # Bloquear acceso público
                 s3_client.put_public_access_block(
                     Bucket=S3_BUCKET_NAME,
                     PublicAccessBlockConfiguration={
@@ -361,7 +378,6 @@ def create_s3_bucket():
                         'RestrictPublicBuckets': True
                     }
                 )
-                
                 print(f"   ✅ Bucket '{S3_BUCKET_NAME}' creado exitosamente")
                 return True
             except Exception as create_error:
@@ -375,6 +391,10 @@ def create_s3_bucket():
 def create_dynamodb_table(table_name, key_schema, attribute_definitions, 
                           global_secondary_indexes=None, stream_enabled=False, ttl_attribute=None):
     """Crea una tabla DynamoDB si no existe."""
+    if not table_name:
+        print("   ⚠️  Nombre de tabla no definido. Saltando creación.")
+        return True  # lo tratamos como opcional
+
     try:
         print(f"\n📊 Verificando tabla: {table_name}")
         dynamodb_client.describe_table(TableName=table_name)
@@ -407,11 +427,9 @@ def create_dynamodb_table(table_name, key_schema, attribute_definitions,
                 
                 dynamodb_client.create_table(**table_config)
                 
-                # Esperar a que la tabla esté activa
                 waiter = dynamodb_client.get_waiter('table_exists')
                 waiter.wait(TableName=table_name)
                 
-                # Habilitar TTL si se especifica
                 if ttl_attribute:
                     dynamodb_client.update_time_to_live(
                         TableName=table_name,
@@ -432,22 +450,21 @@ def create_dynamodb_table(table_name, key_schema, attribute_definitions,
 
 
 def create_all_resources():
-    """Crea todas las tablas DynamoDB y el bucket S3 para el sistema de Delivery."""
+    """Crea tablas DynamoDB necesarias y verifica bucket S3."""
     print("\n" + "=" * 60)
     print("🏗️  CREANDO RECURSOS AWS (Delivery)")
     print("=" * 60)
     
-    # Crear bucket S3
-    if not create_s3_bucket():
-        return False
+    # Bucket S3 (opcional, pero lo verificamos/creamos si está definido)
+    if S3_BUCKET_NAME:
+        if not create_s3_bucket():
+            return False
     
     # Usuarios: PK = correo
     if not create_dynamodb_table(
         table_name=TABLE_USUARIOS,
         key_schema=[{'AttributeName': 'correo', 'KeyType': 'HASH'}],
-        attribute_definitions=[
-            {'AttributeName': 'correo', 'AttributeType': 'S'}
-        ]
+        attribute_definitions=[{'AttributeName': 'correo', 'AttributeType': 'S'}]
     ):
         return False
     
@@ -469,9 +486,7 @@ def create_all_resources():
     if not create_dynamodb_table(
         table_name=TABLE_LOCALES,
         key_schema=[{'AttributeName': 'local_id', 'KeyType': 'HASH'}],
-        attribute_definitions=[
-            {'AttributeName': 'local_id', 'AttributeType': 'S'}
-        ]
+        attribute_definitions=[{'AttributeName': 'local_id', 'AttributeType': 'S'}]
     ):
         return False
     
@@ -489,19 +504,43 @@ def create_all_resources():
     ):
         return False
     
-    # Pedidos: PK = local_id, SK = pedido_id
+    # Pedidos (multi-tenant): PK = tenant_id, SK = pedido_id
+    # GSIs:
+    #   - GSI_Local   (tenant_id, local_id)
+    #   - GSI_Usuario (tenant_id, usuario_correo)
     if not create_dynamodb_table(
         table_name=TABLE_PEDIDOS,
         key_schema=[
-            {'AttributeName': 'local_id', 'KeyType': 'HASH'},
+            {'AttributeName': 'tenant_id', 'KeyType': 'HASH'},
             {'AttributeName': 'pedido_id', 'KeyType': 'RANGE'}
         ],
         attribute_definitions=[
+            {'AttributeName': 'tenant_id', 'AttributeType': 'S'},
+            {'AttributeName': 'pedido_id', 'AttributeType': 'S'},
             {'AttributeName': 'local_id', 'AttributeType': 'S'},
-            {'AttributeName': 'pedido_id', 'AttributeType': 'S'}
+            {'AttributeName': 'usuario_correo', 'AttributeType': 'S'}
+        ],
+        global_secondary_indexes=[
+            {
+                'IndexName': 'GSI_Local',
+                'KeySchema': [
+                    {'AttributeName': 'tenant_id', 'KeyType': 'HASH'},
+                    {'AttributeName': 'local_id', 'KeyType': 'RANGE'}
+                ],
+                'Projection': {'ProjectionType': 'ALL'}
+            },
+            {
+                'IndexName': 'GSI_Usuario',
+                'KeySchema': [
+                    {'AttributeName': 'tenant_id', 'KeyType': 'HASH'},
+                    {'AttributeName': 'usuario_correo', 'KeyType': 'RANGE'}
+                ],
+                'Projection': {'ProjectionType': 'ALL'}
+            }
         ]
     ):
         return False
+    
     # HistorialEstados: PK = pedido_id, SK = estado_id
     if not create_dynamodb_table(
         table_name=TABLE_HISTORIAL_ESTADOS,
@@ -515,28 +554,24 @@ def create_all_resources():
         ]
     ):
         return False
-    # Tokens: PK = token
-    if not create_dynamodb_table(
-        table_name=TABLE_TOKENS_USUARIOS,
-        key_schema=[
-            {'AttributeName': 'token', 'KeyType': 'HASH'}
-        ],
-        attribute_definitions=[
-            {'AttributeName': 'token', 'AttributeType': 'S'}
-        ]
-    ):
-        return False
-        # Tokens: PK = token
-    if not create_dynamodb_table(
-        table_name=TABLE_TOKENS_EMPLEADOS,
-        key_schema=[
-            {'AttributeName': 'token', 'KeyType': 'HASH'}
-        ],
-        attribute_definitions=[
-            {'AttributeName': 'token', 'AttributeType': 'S'}
-        ]
-    ):
-        return False
+    
+    # Tokens Usuarios (opcional)
+    if TABLE_TOKENS_USUARIOS:
+        if not create_dynamodb_table(
+            table_name=TABLE_TOKENS_USUARIOS,
+            key_schema=[{'AttributeName': 'token', 'KeyType': 'HASH'}],
+            attribute_definitions=[{'AttributeName': 'token', 'AttributeType': 'S'}]
+        ):
+            return False
+    
+    # Tokens Empleados (opcional)
+    if TABLE_TOKENS_EMPLEADOS:
+        if not create_dynamodb_table(
+            table_name=TABLE_TOKENS_EMPLEADOS,
+            key_schema=[{'AttributeName': 'token', 'KeyType': 'HASH'}],
+            attribute_definitions=[{'AttributeName': 'token', 'AttributeType': 'S'}]
+        ):
+            return False
     
     print("\n✅ Todos los recursos creados exitosamente")
     return True
@@ -564,9 +599,8 @@ def main():
 
     results = {}
     for filename, config in TABLE_MAPPING.items():
-        if config["table_name"]:
-            success = populate_table(filename, config)
-            results[filename] = success
+        success = populate_table(filename, config)
+        results[filename] = success
         time.sleep(1)
 
     print("\n" + "=" * 60)
