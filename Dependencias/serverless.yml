@@ -1,0 +1,33 @@
+service: millas-dependencias
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  iam:
+    role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+
+layers:
+  pythonDependencies:
+    path: python-dependencies
+    name: ${self:provider.stage, 'dev'}-millas-python-dependencies
+    description: Capa compartida con dependencias Python para todos los microservicios
+    compatibleRuntimes:
+      - python3.13
+      - python3.12
+      - python3.11
+    retain: false
+
+resources:
+  Outputs:
+    PythonDependenciesLayerExport:
+      Value:
+        Ref: PythonDependenciesLambdaLayer
+      Export:
+        Name: MillasPythonDependenciesLayer
+    
+    PythonDependenciesLayerVersion:
+      Value:
+        Ref: PythonDependenciesLambdaLayer
+      Export:
+        Name: Millas-Python-Layer-Version

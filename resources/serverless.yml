@@ -11,7 +11,8 @@ provider:
     role: arn:aws:iam::645337731455:role/LabRole
   httpApi:
     cors: true
-
+  layers:
+    - ${cf:millas-dependencias-dev.PythonDependenciesLayerExport}  
 resources:
   Resources:
     # Tabla de Empleados

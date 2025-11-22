@@ -1,0 +1,24 @@
+# ============================================================
+# DEPENDENCIAS COMPARTIDAS - ALERTA UTEC
+# ============================================================
+
+# AWS SDK
+boto3>=1.35.0
+botocore>=1.35.0
+
+# Validación de datos
+jsonschema>=4.23.0
+
+# JWT para autenticación
+PyJWT>=2.9.0
+
+# Utilidades
+python-dateutil>=2.9.0
+python-dotenv>=1.0.0
+requests>=2.32.0
+
+# HTTP client
+urllib3>=2.0.0
+
+# EMAIL
+requests
