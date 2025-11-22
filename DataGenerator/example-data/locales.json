@@ -2,85 +2,85 @@
   {
     "local_id": "LOCAL-001",
     "direccion": "Av. Ejemplo 100, Ciudad 1",
-    "telefono": "+51 942841978",
-    "hora_apertura": "10:00",
-    "hora_finalizacion": "23:00",
+    "telefono": "+51 924491214",
+    "hora_apertura": "09:00",
+    "hora_finalizacion": "22:00",
     "gerente": {
-      "nombre": "Carmen Rodríguez",
-      "correo": "carmen.rodriguez@hotmail.com",
-      "contrasena": "ger_eb309130"
+      "nombre": "Juan Ramírez",
+      "correo": "juan.ramirez@outlook.com",
+      "contrasena": "ger_334bbbfb"
     }
   },
   {
     "local_id": "LOCAL-002",
     "direccion": "Av. Ejemplo 200, Ciudad 2",
-    "telefono": "+51 983176398",
-    "hora_apertura": "11:00",
-    "hora_finalizacion": "21:00",
+    "telefono": "+51 928493857",
+    "hora_apertura": "10:00",
+    "hora_finalizacion": "22:00",
     "gerente": {
-      "nombre": "Carlos Pérez",
-      "correo": "carlos.perez@hotmail.com",
-      "contrasena": "ger_1783fbf0"
+      "nombre": "Pedro Sánchez",
+      "correo": "pedro.sanchez@hotmail.com",
+      "contrasena": "ger_e035d283"
     }
   },
   {
     "local_id": "LOCAL-003",
     "direccion": "Av. Ejemplo 300, Ciudad 3",
-    "telefono": "+51 987246729",
-    "hora_apertura": "11:00",
-    "hora_finalizacion": "23:00",
+    "telefono": "+51 960071155",
+    "hora_apertura": "10:00",
+    "hora_finalizacion": "20:00",
     "gerente": {
-      "nombre": "José García",
-      "correo": "jose.garcia@outlook.com",
-      "contrasena": "ger_b2a93514"
+      "nombre": "María Rojas",
+      "correo": "maria.rojas@gmail.com",
+      "contrasena": "ger_4bbd54f2"
     }
   },
   {
     "local_id": "LOCAL-004",
     "direccion": "Av. Ejemplo 400, Ciudad 4",
-    "telefono": "+51 961920914",
-    "hora_apertura": "10:00",
+    "telefono": "+51 987923411",
+    "hora_apertura": "09:00",
     "hora_finalizacion": "21:00",
     "gerente": {
-      "nombre": "Isabel Torres",
-      "correo": "isabel.torres@hotmail.com",
-      "contrasena": "ger_d1f7fbd2"
+      "nombre": "Pedro García",
+      "correo": "pedro.garcia@gmail.com",
+      "contrasena": "ger_a449db34"
     }
   },
   {
     "local_id": "LOCAL-005",
     "direccion": "Av. Ejemplo 500, Ciudad 5",
-    "telefono": "+51 938784088",
+    "telefono": "+51 938789464",
     "hora_apertura": "11:00",
     "hora_finalizacion": "22:00",
     "gerente": {
-      "nombre": "Ana Flores",
-      "correo": "ana.flores@hotmail.com",
-      "contrasena": "ger_1beae3fe"
+      "nombre": "Diego Morales",
+      "correo": "diego.morales@outlook.com",
+      "contrasena": "ger_9ba1b541"
     }
   },
   {
     "local_id": "LOCAL-006",
     "direccion": "Av. Ejemplo 600, Ciudad 6",
-    "telefono": "+51 978473553",
+    "telefono": "+51 996124496",
     "hora_apertura": "09:00",
     "hora_finalizacion": "22:00",
     "gerente": {
-      "nombre": "María López",
-      "correo": "maria.lopez@gmail.com",
-      "contrasena": "ger_b2695f76"
+      "nombre": "Luis López",
+      "correo": "luis.lopez@gmail.com",
+      "contrasena": "ger_b2b2a016"
     }
   },
   {
     "local_id": "LOCAL-007",
     "direccion": "Av. Ejemplo 700, Ciudad 7",
-    "telefono": "+51 974474959",
-    "hora_apertura": "11:00",
-    "hora_finalizacion": "20:00",
+    "telefono": "+51 910458834",
+    "hora_apertura": "09:00",
+    "hora_finalizacion": "22:00",
     "gerente": {
-      "nombre": "Luis Pérez",
-      "correo": "luis.perez@outlook.com",
-      "contrasena": "ger_5d56fa7e"
+      "nombre": "Carmen González",
+      "correo": "carmen.gonzalez@outlook.com",
+      "contrasena": "ger_2b44ac24"
     }
   }
 ]

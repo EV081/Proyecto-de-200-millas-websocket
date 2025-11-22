@@ -6,289 +6,177 @@
     "role": "Admin"
   },
   {
-    "nombre": "Carmen Rodríguez",
-    "correo": "carmen.rodriguez@hotmail.com",
-    "contrasena": "ger_eb309130",
+    "nombre": "Juan Ramírez",
+    "correo": "juan.ramirez@outlook.com",
+    "contrasena": "ger_334bbbfb",
     "role": "Gerente"
   },
   {
-    "nombre": "Carlos Pérez",
-    "correo": "carlos.perez@hotmail.com",
-    "contrasena": "ger_1783fbf0",
+    "nombre": "Pedro Sánchez",
+    "correo": "pedro.sanchez@hotmail.com",
+    "contrasena": "ger_e035d283",
     "role": "Gerente"
+  },
+  {
+    "nombre": "María Rojas",
+    "correo": "maria.rojas@gmail.com",
+    "contrasena": "ger_4bbd54f2",
+    "role": "Gerente"
+  },
+  {
+    "nombre": "Pedro García",
+    "correo": "pedro.garcia@gmail.com",
+    "contrasena": "ger_a449db34",
+    "role": "Gerente"
+  },
+  {
+    "nombre": "Diego Morales",
+    "correo": "diego.morales@outlook.com",
+    "contrasena": "ger_9ba1b541",
+    "role": "Gerente"
+  },
+  {
+    "nombre": "Luis López",
+    "correo": "luis.lopez@gmail.com",
+    "contrasena": "ger_b2b2a016",
+    "role": "Gerente"
+  },
+  {
+    "nombre": "Carmen González",
+    "correo": "carmen.gonzalez@outlook.com",
+    "contrasena": "ger_2b44ac24",
+    "role": "Gerente"
+  },
+  {
+    "nombre": "Laura López",
+    "correo": "laura.lopez@hotmail.com",
+    "contrasena": "cli_1ac3c48c9b",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Pedro Martínez",
+    "correo": "pedro.martinez@gmail.com",
+    "contrasena": "cli_7fa623dfd1",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Luis Morales",
+    "correo": "luis.morales@hotmail.com",
+    "contrasena": "cli_f830a4f65b",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Laura Flores",
+    "correo": "laura.flores@hotmail.com",
+    "contrasena": "cli_aded69d5ef",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Carlos Ramírez",
+    "correo": "carlos.ramirez@gmail.com",
+    "contrasena": "cli_2dfc3461d1",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Andrés Torres",
+    "correo": "andres.torres@outlook.com",
+    "contrasena": "cli_6e4ce3377b",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Carlos Ramírez",
+    "correo": "carlos.ramirez@hotmail.com",
+    "contrasena": "cli_c9200debeb",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Isabel González",
+    "correo": "isabel.gonzalez@outlook.com",
+    "contrasena": "cli_defc99068d",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Pedro Sánchez",
+    "correo": "pedro.sanchez@gmail.com",
+    "contrasena": "cli_8dd4d7dc0d",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Miguel González",
+    "correo": "miguel.gonzalez@outlook.com",
+    "contrasena": "cli_8f171cbb9e",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Camila Castro",
+    "correo": "camila.castro@outlook.com",
+    "contrasena": "cli_c26456615b",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Carmen Pérez",
+    "correo": "carmen.perez@outlook.com",
+    "contrasena": "cli_efd8c20e21",
+    "role": "Cliente"
   },
   {
     "nombre": "José García",
-    "correo": "jose.garcia@outlook.com",
-    "contrasena": "ger_b2a93514",
-    "role": "Gerente"
-  },
-  {
-    "nombre": "Isabel Torres",
-    "correo": "isabel.torres@hotmail.com",
-    "contrasena": "ger_d1f7fbd2",
-    "role": "Gerente"
-  },
-  {
-    "nombre": "Ana Flores",
-    "correo": "ana.flores@hotmail.com",
-    "contrasena": "ger_1beae3fe",
-    "role": "Gerente"
-  },
-  {
-    "nombre": "María López",
-    "correo": "maria.lopez@gmail.com",
-    "contrasena": "ger_b2695f76",
-    "role": "Gerente"
-  },
-  {
-    "nombre": "Luis Pérez",
-    "correo": "luis.perez@outlook.com",
-    "contrasena": "ger_5d56fa7e",
-    "role": "Gerente"
-  },
-  {
-    "nombre": "Juan Rojas",
-    "correo": "juan.rojas@gmail.com",
-    "contrasena": "cli_efe1ee104c",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "6854151998357341",
-      "cvv": "908",
-      "fecha_vencimiento": "02/25",
-      "direccion_delivery": "Calle 141 #493"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Carmen Rojas",
-    "correo": "carmen.rojas@hotmail.com",
-    "contrasena": "cli_ebff38df91",
-    "role": "Cliente",
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Pedro Torres",
-    "correo": "pedro.torres@outlook.com",
-    "contrasena": "cli_891a00fda4",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "9461584208963617",
-      "cvv": "839",
-      "fecha_vencimiento": "02/29",
-      "direccion_delivery": "Calle 46 #514"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Carlos López",
-    "correo": "carlos.lopez@hotmail.com",
-    "contrasena": "cli_883ba25935",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "9122059395470379",
-      "cvv": "803",
-      "fecha_vencimiento": "05/26",
-      "direccion_delivery": "Calle 183 #555"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Andrés Castro",
-    "correo": "andres.castro@hotmail.com",
-    "contrasena": "cli_85e0f545a1",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "0556082758592962",
-      "cvv": "686",
-      "fecha_vencimiento": "03/28",
-      "direccion_delivery": "Calle 100 #197"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Valentina Ortiz",
-    "correo": "valentina.ortiz@outlook.com",
-    "contrasena": "cli_3c5934ec16",
-    "role": "Cliente",
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Luis Pérez",
-    "correo": "luis.perez@gmail.com",
-    "contrasena": "cli_cf1ec8d2c7",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "5943892087225486",
-      "cvv": "692",
-      "fecha_vencimiento": "02/29",
-      "direccion_delivery": "Calle 70 #762"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Andrés Fernández",
-    "correo": "andres.fernandez@outlook.com",
-    "contrasena": "cli_fc16dd97a7",
-    "role": "Cliente",
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Diego Rodríguez",
-    "correo": "diego.rodriguez@outlook.com",
-    "contrasena": "cli_88792a6489",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "4898614314901271",
-      "cvv": "114",
-      "fecha_vencimiento": "01/27",
-      "direccion_delivery": "Calle 2 #888"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Carlos Castro",
-    "correo": "carlos.castro@hotmail.com",
-    "contrasena": "cli_06e1989670",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "7060109512066232",
-      "cvv": "461",
-      "fecha_vencimiento": "09/28",
-      "direccion_delivery": "Calle 196 #102"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Valentina Torres",
-    "correo": "valentina.torres@gmail.com",
-    "contrasena": "cli_a38d687710",
-    "role": "Cliente",
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Carlos Fernández",
-    "correo": "carlos.fernandez@outlook.com",
-    "contrasena": "cli_ea5fed66b5",
-    "role": "Cliente",
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Diego Castro",
-    "correo": "diego.castro@gmail.com",
-    "contrasena": "cli_678e7571af",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "0923268409974408",
-      "cvv": "265",
-      "fecha_vencimiento": "08/26",
-      "direccion_delivery": "Calle 157 #522"
-    },
-    "historial_pedidos": []
+    "correo": "jose.garcia@gmail.com",
+    "contrasena": "cli_0cab043a23",
+    "role": "Cliente"
   },
   {
     "nombre": "Miguel Sánchez",
-    "correo": "miguel.sanchez@gmail.com",
-    "contrasena": "cli_53f4510d89",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "5064653902109552",
-      "cvv": "423",
-      "fecha_vencimiento": "10/28",
-      "direccion_delivery": "Calle 93 #807"
-    },
-    "historial_pedidos": []
+    "correo": "miguel.sanchez@outlook.com",
+    "contrasena": "cli_3684663411",
+    "role": "Cliente"
   },
   {
-    "nombre": "Pedro Ortiz",
-    "correo": "pedro.ortiz@gmail.com",
-    "contrasena": "cli_cbba7488d0",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "5855802389150626",
-      "cvv": "618",
-      "fecha_vencimiento": "11/29",
-      "direccion_delivery": "Calle 93 #262"
-    },
-    "historial_pedidos": []
+    "nombre": "Valentina Martínez",
+    "correo": "valentina.martinez@hotmail.com",
+    "contrasena": "cli_d1fbf23d14",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Andrés Pérez",
+    "correo": "andres.perez@hotmail.com",
+    "contrasena": "cli_0ff0f9dbe0",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Andrés Torres",
+    "correo": "andres.torres@hotmail.com",
+    "contrasena": "cli_d06503e312",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Sofía Torres",
+    "correo": "sofia.torres@hotmail.com",
+    "contrasena": "cli_d442050ee6",
+    "role": "Cliente"
+  },
+  {
+    "nombre": "Miguel Morales",
+    "correo": "miguel.morales@outlook.com",
+    "contrasena": "cli_de9f407d77",
+    "role": "Cliente"
   },
   {
     "nombre": "Pedro Flores",
     "correo": "pedro.flores@hotmail.com",
-    "contrasena": "cli_2dd508af4c",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "1961668117595517",
-      "cvv": "244",
-      "fecha_vencimiento": "08/26",
-      "direccion_delivery": "Calle 69 #855"
-    },
-    "historial_pedidos": []
+    "contrasena": "cli_b9f920f5bd",
+    "role": "Cliente"
   },
   {
-    "nombre": "Andrés Sánchez",
-    "correo": "andres.sanchez@outlook.com",
-    "contrasena": "cli_2bc618d700",
-    "role": "Cliente",
-    "historial_pedidos": []
+    "nombre": "Carmen Flores",
+    "correo": "carmen.flores@gmail.com",
+    "contrasena": "cli_27dba1ca88",
+    "role": "Cliente"
   },
   {
-    "nombre": "José Fernández",
-    "correo": "jose.fernandez@hotmail.com",
-    "contrasena": "cli_fa8e61cd35",
-    "role": "Cliente",
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Laura Morales",
-    "correo": "laura.morales@outlook.com",
-    "contrasena": "cli_dfa5a13e1c",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "9245222977977229",
-      "cvv": "717",
-      "fecha_vencimiento": "10/29",
-      "direccion_delivery": "Calle 116 #626"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "María Silva",
-    "correo": "maria.silva@outlook.com",
-    "contrasena": "cli_9c9a3178fc",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "1112438443224825",
-      "cvv": "676",
-      "fecha_vencimiento": "01/29",
-      "direccion_delivery": "Calle 141 #563"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Carlos Rodríguez",
-    "correo": "carlos.rodriguez@gmail.com",
-    "contrasena": "cli_133397cac7",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "3488098339632057",
-      "cvv": "874",
-      "fecha_vencimiento": "05/26",
-      "direccion_delivery": "Calle 98 #935"
-    },
-    "historial_pedidos": []
-  },
-  {
-    "nombre": "Diego Morales",
-    "correo": "diego.morales@gmail.com",
-    "contrasena": "cli_3c06fe27c7",
-    "role": "Cliente",
-    "informacion_bancaria": {
-      "numero_tarjeta": "2558980125542458",
-      "cvv": "496",
-      "fecha_vencimiento": "02/26",
-      "direccion_delivery": "Calle 90 #102"
-    },
-    "historial_pedidos": []
+    "nombre": "Ana Flores",
+    "correo": "ana.flores@outlook.com",
+    "contrasena": "cli_52d0edb76c",
+    "role": "Cliente"
   }
 ]
