@@ -1,0 +1,83 @@
+{
+  "Comment": "Orquestación por estado del pedido",
+  "StartAt": "RuteoPorEstado",
+  "States": {
+    "RuteoPorEstado": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.estado",
+          "StringEquals": "EN_PREPARACION",
+          "Next": "LogicaEnPreparacion"
+        },
+        {
+          "Variable": "$.estado",
+          "StringEquals": "EN_CAMINO",
+          "Next": "Lambda Invoke"
+        },
+        {
+          "Variable": "$.estado",
+          "StringEquals": "ENTREGADO",
+          "Next": "LogicaEntregado"
+        }
+      ],
+      "Default": "EstadoNoReconocido"
+    },
+    "Lambda Invoke": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload.$": "$",
+        "FunctionName": "arn:aws:lambda:us-east-1:645337731455:function:service-orders-pop-and-dispatch-dev-preparacionStep:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Next": "LogicaEnCamino"
+    },
+    "LogicaEnPreparacion": {
+      "Type": "Pass",
+      "Result": {
+        "accion": "prep",
+        "detalle": "hacer cosas de cocina/packing"
+      },
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "LogicaEnCamino": {
+      "Type": "Pass",
+      "Result": {
+        "accion": "delivery",
+        "detalle": "notificar repartidor / tracking"
+      },
+      "End": true
+    },
+    "LogicaEntregado": {
+      "Type": "Pass",
+      "Result": {
+        "accion": "cierre",
+        "detalle": "cerrar pedido, encuestas, recibos"
+      },
+      "End": true
+    },
+    "EstadoNoReconocido": {
+      "Type": "Fail",
+      "Error": "EstadoInvalido",
+      "Cause": "El campo $.estado no coincide con ninguna rama"
+    }
+  }
+}
