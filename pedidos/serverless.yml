@@ -10,7 +10,7 @@ provider:
   iam:
     role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
   environment:
-    TOKENS_TABLE_USERS: ${env:TOKENS_TABLE_USERS}
+    TOKENS_TABLE_USERS: ${env:TABLE_TOKENS_USUARIOS}
     PRODUCTS_TABLE: ${env:TABLE_PRODUCTOS}
     TABLE_PEDIDOS : ${env:TABLE_PEDIDOS}
     TOKEN_VALIDATOR_FUNCTION: service-products-${self:provider.stage}-ValidarToken
