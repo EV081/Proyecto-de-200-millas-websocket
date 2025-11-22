@@ -32,7 +32,7 @@ TABLE_HISTORIAL_ESTADOS = os.getenv('TABLE_HISTORIAL_ESTADOS')
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
 # Carpeta con los datos JSON
-DATA_DIR = "example-data"
+DATA_DIR = os.path.join(os.path.dirname(__file__), "example-data")
 
 # Mapeo de archivos JSON a tablas y claves, según tus schemas
 TABLE_MAPPING = {
@@ -488,6 +488,19 @@ def create_all_resources():
         attribute_definitions=[
             {'AttributeName': 'local_id', 'AttributeType': 'S'},
             {'AttributeName': 'pedido_id', 'AttributeType': 'S'}
+        ]
+    ):
+        return False
+    # HistorialEstados: PK = pedido_id, SK = estado_id
+    if not create_dynamodb_table(
+        table_name=TABLE_HISTORIAL_ESTADOS,
+        key_schema=[
+            {'AttributeName': 'pedido_id', 'KeyType': 'HASH'},
+            {'AttributeName': 'estado_id', 'KeyType': 'RANGE'}
+        ],
+        attribute_definitions=[
+            {'AttributeName': 'pedido_id', 'AttributeType': 'S'},
+            {'AttributeName': 'estado_id', 'AttributeType': 'S'}
         ]
     ):
         return False

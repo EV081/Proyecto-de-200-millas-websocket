@@ -6,25 +6,17 @@ services:
   dependencias:
     path: Dependencias
 
-  service-resources:
-    path: resources
-    dependsOn:
-      - dependencias
-
   service-employees:
     path: employees
     dependsOn:
-      - service-resources
       - dependencias
 
   service-users:
     path: users
     dependsOn:
-      - service-resources
       - dependencias
 
   service-products:
     path: products
     dependsOn:
-      - service-resources
       - dependencias
