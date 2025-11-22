@@ -16,7 +16,7 @@ services:
     dependsOn:
       - dependencias
   
-  service-pedidos:
-    path: pedidos
+  service-clientes:
+    path: clientes
     dependsOn:
       - dependencias

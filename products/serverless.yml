@@ -64,6 +64,3 @@ functions:
           path: /productos/list
           cors: true
           integration: lambda
-          
-  ValidarToken:
-    handler: validar_token_users.lambda_handler

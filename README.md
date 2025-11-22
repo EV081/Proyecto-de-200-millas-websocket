@@ -1,151 +1,102 @@
-### Proyecto 200 Millas
+# Proyecto 200 Millas - Documentación API
 
-Este documento proporciona una descripción general del proyecto **200_millas** y explica cómo usar los servicios incluidos en la colección de Postman proporcionada. El proyecto utiliza una arquitectura sin servidor (serverless) para desplegar los servicios y ofrece funcionalidades básicas para la gestión de usuarios, empleados y productos.
+Proyecto de microservicios serverless para gestión de usuarios, empleados y productos.
 
-### Servicios Disponibles
+---
 
-El proyecto consta de tres servicios:
+## Estructura de Bases de Datos
 
-1. **Usuarios**
-   El servicio "Usuarios" gestiona el registro y el inicio de sesión de los usuarios.
+### Usuarios
+- **PK**: `correo` (string)
+- **Campos**: nombre, correo, contrasena, role
+- **Roles**: Cliente, Gerente, Admin
 
-   * **Registrar Usuario**: Este endpoint permite registrar un nuevo usuario.
+### Productos
+- **PK**: `local_id` (string)
+- **SK**: `nombre` (string)
+- **Campos**: precio, descripcion, categoria, stock, imagen_url
+- **Categorías**: Promos Fast, Express, Promociones, Sopas Power, Bowls Del Tigre, Leche de Tigre, Ceviches, Fritazo, Mostrimar, Box Marino, Duos Marinos, Trios Marinos, Dobles, Rondas Marinas, Mega Marino, Familiares
 
-     * **Método**: POST
-     * **URL**: `https://5u1x1lmc46.execute-api.us-east-1.amazonaws.com/users/register`
-     * **Cuerpo de la solicitud**:
+### Empleados
+- **PK**: `local_id` (string)
+- **SK**: `dni` (string)
+- **Campos**: nombre, apellido, role, ocupado
+- **Roles**: Repartidor, Cocinero, Despachador
 
-       ```json
-       {
-         "tenant_id": "200millas",
-         "user_id": "yaritza@elmer.com",
-         "password": "123456"
-       }
-       ```
-   * **Iniciar sesión Usuario**: Este endpoint permite iniciar sesión con un usuario ya registrado.
+---
 
-     * **Método**: POST
-     * **URL**: `https://5u1x1lmc46.execute-api.us-east-1.amazonaws.com/users/login`
-     * **Cuerpo de la solicitud**:
+## Microservicios
 
-       ```json
-       {
-         "tenant_id": "200millas",
-         "user_id": "yaritza@elmer.com",
-         "password": "123456"
-       }
-       ```
+### 1. Service Users (`service-users`)
 
-2. **Productos**
-   El servicio "Productos" gestiona la creación, actualización, listado y eliminación de productos.
+Gestiona autenticación, usuarios y empleados.
 
-   * **Crear Producto**: Este endpoint permite crear un nuevo producto y sube su imagen en S3. Además, necesita el token del employee.
+**Variables de Entorno**:
+- `TABLE_USUARIOS`
+- `TABLE_TOKENS_USUARIOS`
+- `TABLE_EMPLEADOS`
+- `TOKEN_VALIDATOR_FUNCTION`
 
-     * **Método**: POST
-     * **URL**: `https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/create`
-     * **Cuerpo de la solicitud**:
+#### Usuarios (Públicos)
 
-       ```json
-       {
-         "tenant_id": "restaurante_1",
-         "product_id": "pro2",
-         "name": "ceviche de conchas negras 2",
-         "price": 40,
-         "stock": 50,
-         "image": {
-           "key": "producto-1.png",
-           "file_base64": "image_data_here"
-         }
-       }
-       ```
-   * **Actualizar Producto**: Este endpoint permite actualizar un producto existente y necesita el token del employee.
+| API | Método | Path | Request | Response |
+|-----|--------|------|---------|----------|
+| **Registrar Usuario** | POST | `/users/register` | `{nombre, correo, contrasena, role}` | `{message, correo}` |
+| **Login** | POST | `/users/login` | `{correo, contrasena}` | `{token, expires_iso}` |
 
-     * **Método**: PUT
-     * **URL**: `https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/update`
-     * **Cuerpo de la solicitud**:
+#### Usuarios (Protegidos - Require Token)
 
-       ```json
-       {
-         "tenant_id": "restaurante_1",
-         "product_id": "pro2",
-         "name": "ceviche de conchas negras actualizado",
-         "price": 40,
-         "stock": 50
-       }
-       ```
-   * **Eliminar Producto**: Este endpoint permite eliminar un producto existente y necesita el token del employee.
+| API | Método | Path | Request | Response |
+|-----|--------|------|---------|----------|
+| **Obtener Mi Usuario** | GET | `/users/me` | - | `{nombre, correo, role}` |
+| **Modificar Usuario** | PUT | `/users/me` | `{nombre?, contrasena?}` | `{message}` |
+| **Eliminar Usuario** | DELETE | `/users/me` | - | `{message}` |
+| **Cambiar Contraseña** | POST | `/users/password/change` | `{contrasena_actual, contrasena_nueva}` | `{message}` |
 
-     * **Método**: DELETE
-     * **URL**: `https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/delete`
-     * **Cuerpo de la solicitud**:
+#### Empleados (Protegidos - Admin/Gerente)
 
-       ```json
-       {
-         "tenant_id": "restaurante_1",
-         "product_id": "pro2"
-       }
-       ```
-   * **Listar Productos**: Este endpoint lista los productos con paginación.
+| API | Método | Path | Request | Response |
+|-----|--------|------|---------|----------|
+| **Crear Empleado** | POST | `/users/employee` | `{local_id, dni, nombre, apellido, role, ocupado}` | `{message, employee}` |
+| **Actualizar Empleado** | PUT | `/users/employee` | `{local_id, dni, ...campos_a_actualizar}` | `{message}` |
+| **Eliminar Empleado** | DELETE | `/users/employee` | `{local_id, dni}` | `{message}` |
+| **Listar Empleados** | POST | `/users/employees/list` | `{local_id, limit?, start_key?}` | `{empleados, count}` |
 
-     * **Método**: POST
-     * **URL**: `https://9qyel2o126.execute-api.us-east-1.amazonaws.com/productos/list`
-     * **Cuerpo de la solicitud**:
+---
 
-       ```json
-       {
-         "tenant_id": "restaurante_1",
-         "size": 10
-       }
-       ```
+### 2. Service Products (`service-products`)
 
-3. **Empleado**
-   El servicio "Empleado" permite registrar e iniciar sesión con empleados.
+Gestiona operaciones CRUD de productos.
 
-   * **Registrar Empleado**: Este endpoint permite registrar un nuevo empleado.
+**Variables de Entorno**:
+- `PRODUCTS_TABLE`
+- `PRODUCTS_BUCKET` (S3 para imágenes)
+- `TOKEN_VALIDATOR_FUNCTION`
 
-     * **Método**: POST
-     * **URL**: `https://lgmxqmwhz8.execute-api.us-east-1.amazonaws.com/employees/register`
-     * **Cuerpo de la solicitud**:
+| API | Método | Path | Request | Response |
+|-----|--------|------|---------|----------|
+| **Crear Producto** | POST | `/productos/create` | `{local_id, nombre, precio, descripcion, categoria, stock, imagen_url}` | `{message, producto}` |
+| **Actualizar Producto** | PUT | `/productos/update` | `{local_id, nombre, ...campos_a_actualizar}` | `{message}` |
+| **Obtener por ID** | POST | `/productos/id` | `{local_id, nombre}` | `{producto}` |
+| **Listar Productos** | POST | `/productos/list` | `{local_id, limit?, start_key?}` | `{productos, count}` |
+| **Eliminar Producto** | DELETE | `/productos/delete` | `{local_id, nombre}` | `{message}` |
 
-       ```json
-       {
-         "tenant_id": "200millas",
-         "user_id": "chef1@200millas.pe",
-         "password": "Secreta123"
-       }
-       ```
-   * **Iniciar sesión Empleado**: Este endpoint permite que un empleado inicie sesión.
+---
 
-     * **Método**: POST
-     * **URL**: `https://lgmxqmwhz8.execute-api.us-east-1.amazonaws.com/employees/login`
-     * **Cuerpo de la solicitud**:
+### 3. Servicio clientes
 
-       ```json
-       {
-         "tenant_id": "200millas",
-         "user_id": "chef1@200millas.pe",
-         "password": "Secreta123"
-       }
-       ```
+| API                           | Método | Path                | Request                                                                                                   | Response                         |
+| ----------------------------- | ------ | ------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| **Crear Pedido**              | POST   | `/pedido/create`    | `{tenant_id, local_id, usuario_correo, direccion, costo, estado, productos[], fecha_entrega_aproximada?}` | `{message, pedido}`              |
+| **Obtener Estado del Pedido** | GET    | `/pedido/status`    | `?tenant_id=&pedido_id=`                                                                                  | `{tenant_id, pedido_id, estado}` |
+| **Confirmar Recepción**       | POST   | `/pedido/confirmar` | `{tenant_id, pedido_id}`                                                                                  | `{message, estado: "recibido"}`  |
 
-### Despliegue sin servidor (Serverless)
+---
 
-El proyecto utiliza **Serverless Framework** para desplegar las funciones en un entorno sin servidor (serverless).
+## Autenticación
 
-El archivo `serverless-compose.yml` se usa para definir la configuración del despliegue, incluyendo las funciones, los recursos y el entorno.
+- Endpoints **públicos**: No requieren token
+- Endpoints **protegidos**: Requieren header `Authorization: Bearer <token>`
+- El token se obtiene del endpoint de login
+- El validador invoca a `TOKEN_VALIDATOR_FUNCTION` para verificar tokens
 
-Para desplegar los servicios, sigue estos pasos:
-
-1. Dirígete a la raíz del directorio del proyecto.
-2. Ejecuta el siguiente comando para desplegar:
-
-   ```bash
-   sls deploy
-   ```
-3. Para eliminar los servicios desplegados, utiliza el siguiente comando:
-
-   ```bash
-   sls remove
-   ```
-
-Esto se encargará automáticamente de la configuración, despliegue y eliminación de los servicios en el entorno sin servidor.

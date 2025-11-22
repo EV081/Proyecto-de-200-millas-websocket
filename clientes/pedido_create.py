@@ -7,14 +7,17 @@ import boto3
 from botocore.exceptions import ClientError
 from decimal import Decimal
 
+# ==== Variables de entorno ====
 TABLE_PEDIDOS = os.environ["TABLE_PEDIDOS"]
 TOKENS_TABLE_USERS = os.environ["TOKENS_TABLE_USERS"]
 TOKEN_VALIDATOR_FUNCTION = os.environ["TOKEN_VALIDATOR_FUNCTION"]
 
+# ==== Clientes AWS ====
 dynamodb = boto3.resource("dynamodb")
 pedidos_table = dynamodb.Table(TABLE_PEDIDOS)
 tokens_table = dynamodb.Table(TOKENS_TABLE_USERS)
 lambda_client = boto3.client("lambda")
+eventbridge = boto3.client("events")  # bus por defecto
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -48,9 +51,6 @@ def _get_auth_token(event):
     return auth
 
 def _validate_payload(p):
-    """
-    Igual que antes, pero SIN exigir 'pedido_id'.
-    """
     required = ["tenant_id","local_id","usuario_correo","direccion","costo","estado"]
     missing = [k for k in required if k not in p]
     if missing:
@@ -117,7 +117,38 @@ def _get_token_item(token):
 def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
+def _publish_crear_pedido_event(item):
+    """
+    Publica 'CrearPedido' en el bus por defecto con:
+    - pedido_id
+    - local_id
+    - productos: lista de {nombre, cantidad}
+    """
+    productos_simple = [
+        {"nombre": p.get("nombre"), "cantidad": p.get("cantidad")}
+        for p in item.get("productos", [])
+        if isinstance(p, dict) and "nombre" in p and "cantidad" in p
+    ]
+
+    detail = {
+        "pedido_id": item["pedido_id"],
+        "local_id": item["local_id"],
+        "productos": productos_simple
+    }
+
+    try:
+        eventbridge.put_events(Entries=[{
+            "Source": "service-pedidos",
+            "DetailType": "CrearPedido",
+            "Detail": json.dumps(detail, ensure_ascii=False)
+            # Sin EventBusName -> usa el bus por defecto
+        }])
+    except Exception as e:
+        # No bloquea el flujo de creación; solo loguea
+        print(f"Error publicando evento CrearPedido: {e}")
+
 def lambda_handler(event, context):
+    # Preflight CORS
     if event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method")) == "OPTIONS":
         return _resp(200, {"ok": True})
 
@@ -142,13 +173,14 @@ def lambda_handler(event, context):
     ok, msg = _validate_payload(body)
     if not ok:
         return _resp(400, {"error": msg})
-
     if body.get("usuario_correo") != correo_token:
         return _resp(403, {"error": "usuario_correo no coincide con el token"})
 
-    # >>> Generamos el pedido_id aquí (UUID v4) <<<
+    # Generamos el pedido_id (UUID v4)
     pedido_id = str(uuid.uuid4())
+    now_iso = _now_iso()
 
+    # Item a persistir (sin updated_at)
     item = {
         "tenant_id": body["tenant_id"],
         "pedido_id": pedido_id,
@@ -159,10 +191,15 @@ def lambda_handler(event, context):
         "direccion": body["direccion"],
         "fecha_entrega_aproximada": body.get("fecha_entrega_aproximada"),
         "estado": body["estado"],
-        "created_at": _now_iso(),
-        "updated_at": _now_iso(),
+        "created_at": now_iso
     }
 
+    # Claves derivadas para GSIs multi-tenant (si ya adaptaste el esquema propuesto)
+    item["tenant_id_local"]   = f'{item["tenant_id"]}#{item["local_id"]}'
+    item["tenant_id_usuario"] = f'{item["tenant_id"]}#{item["usuario_correo"]}'
+    item["tenant_id_estado"]  = f'{item["tenant_id"]}#{item["estado"]}'
+
+    # Guardar en DynamoDB con condición de unicidad
     try:
         pedidos_table.put_item(
             Item=item,
@@ -170,9 +207,11 @@ def lambda_handler(event, context):
         )
     except ClientError as e:
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            # Muy improbable porque generamos UUID, pero por si acaso:
             return _resp(409, {"error": "El pedido ya existe (tenant_id, pedido_id)"})
         print(f"Error put_item: {e}")
         return _resp(500, {"error": "Error guardando el pedido"})
+
+    # Publicar evento 'CrearPedido' (bus por defecto)
+    _publish_crear_pedido_event(item)
 
     return _resp(201, {"message": "Pedido registrado", "pedido": item})
