@@ -125,47 +125,48 @@ deploy_infrastructure() {
   echo -e "${YELLOW}📦 Instalando dependencias para generador/poblador...${NC}"
   pip3 install -q boto3 python-dotenv
 
-  # 1) Crear tablas + 2) Generar datos + 3) Poblar
-  # Asumo dos scripts Python en tu repo:
-  # - scripts/create_tables.py  -> crea tablas con nombres del .env
-  # - scripts/populate_dynamo.py -> lee example-data/*.json y puebla
-  # - scripts/generate_data.py  -> genera example-data/*.json con los schemas nuevos
-  #
-  # Si tus rutas son otras, ajusta abajo.
-
+  # 1) Crear tablas
   if [[ -f "scripts/create_tables.py" ]]; then
-    echo -e "${BLUE}📚 Creando tablas DynamoDB...${NC}"
+    echo -e "${BLUE}📚 Creando tablas DynamoDB (scripts/create_tables.py)...${NC}"
     python3 scripts/create_tables.py
+  elif [[ -f "DataGenerator/create_tables.py" ]]; then
+    echo -e "${BLUE}📚 Creando tablas DynamoDB (DataGenerator/create_tables.py)...${NC}"
+    python3 DataGenerator/create_tables.py
   else
-    echo -e "${YELLOW}ℹ️  scripts/create_tables.py no existe. Se asume que las tablas ya están creadas.${NC}"
+    echo -e "${YELLOW}ℹ️  No se encontró create_tables.py. Se asume que las tablas ya están creadas.${NC}"
   fi
 
+  # 2) Generar datos
   if [[ -f "scripts/generate_data.py" ]]; then
-    echo -e "${BLUE}🧪 Generando datos de ejemplo...${NC}"
+    echo -e "${BLUE}🧪 Generando datos (scripts/generate_data.py)...${NC}"
     python3 scripts/generate_data.py
   elif [[ -f "DataGenerator/generate_data.py" ]]; then
-    echo -e "${BLUE}🧪 Generando datos de ejemplo (DataGenerator)...${NC}"
-    pushd DataGenerator >/dev/null
-    python3 generate_data.py
-    popd >/dev/null
+    echo -e "${BLUE}🧪 Generando datos (DataGenerator/generate_data.py)...${NC}"
+    python3 DataGenerator/generate_data.py
+  elif [[ -f "DataGenerator/DataGenerator.py" ]]; then
+    echo -e "${BLUE}🧪 Generando datos (DataGenerator/DataGenerator.py)...${NC}"
+    python3 DataGenerator/DataGenerator.py
   else
-    echo -e "${YELLOW}ℹ️  No se encontró generate_data.py. Saltando generación de datos.${NC}"
+    echo -e "${YELLOW}ℹ️  No se encontró generate_data.py / DataGenerator.py. Saltando generación de datos.${NC}"
   fi
 
+  # 3) Poblar DynamoDB
   if [[ -f "scripts/populate_dynamo.py" ]]; then
-    echo -e "${BLUE}📤 Poblando DynamoDB con example-data/...${NC}"
+    echo -e "${BLUE}📤 Poblando DynamoDB (scripts/populate_dynamo.py)...${NC}"
     python3 scripts/populate_dynamo.py
   elif [[ -f "DataGenerator/populate_dynamo.py" ]]; then
-    echo -e "${BLUE}📤 Poblando DynamoDB (DataGenerator)...${NC}"
-    pushd DataGenerator >/dev/null
-    python3 populate_dynamo.py
-    popd >/dev/null
+    echo -e "${BLUE}📤 Poblando DynamoDB (DataGenerator/populate_dynamo.py)...${NC}"
+    python3 DataGenerator/populate_dynamo.py
+  elif [[ -f "DataGenerator/DataPoblator.py" ]]; then
+    echo -e "${BLUE}📤 Poblando DynamoDB (DataGenerator/DataPoblator.py)...${NC}"
+    python3 DataGenerator/DataPoblator.py
   else
-    echo -e "${YELLOW}ℹ️  No se encontró populate_dynamo.py. Saltando poblar datos.${NC}"
+    echo -e "${YELLOW}ℹ️  No se encontró populate_dynamo.py / DataPoblator.py. Saltando poblar datos.${NC}"
   fi
 
   echo -e "${GREEN}✅ Infraestructura lista${NC}"
 }
+
 
 deploy_services() {
   echo -e "\n${BLUE}🚀 Desplegando microservicios con Serverless...${NC}"
