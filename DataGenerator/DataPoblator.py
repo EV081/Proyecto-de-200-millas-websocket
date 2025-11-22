@@ -68,7 +68,7 @@ TABLE_MAPPING = {
         "sk": "estado_id"      # SK según schema Historial_Estados     
     },
     "tokens_usuarios.json": {
-        "table_name": TABLE_TOKENS_USURIOS,
+        "table_name": TABLE_TOKENS_USUARIOS,
         "pk": "token",        # PK según schema Tokens
         "sk": None
     },
@@ -517,7 +517,7 @@ def create_all_resources():
         return False
     # Tokens: PK = token
     if not create_dynamodb_table(
-        table_name=TABLE_TOKENS_USURIOS,
+        table_name=TABLE_TOKENS_USUARIOS,
         key_schema=[
             {'AttributeName': 'token', 'KeyType': 'HASH'}
         ],
