@@ -5,11 +5,30 @@ from datetime import datetime, timezone
 TOKENS_TABLE_USERS = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
 def get_bearer_token(event):
-    """Extrae el token del header Authorization"""
+    """Extrae el token del header Authorization (con o sin 'Bearer ')"""
     headers = event.get("headers") or {}
-    auth_header = headers.get("Authorization") or headers.get("authorization") or ""
-    if isinstance(auth_header, str) and auth_header.lower().startswith("bearer "):
-        return auth_header.split(" ", 1)[1].strip()
+    
+    # Buscar el header Authorization (case-insensitive)
+    auth_header = None
+    for key, value in headers.items():
+        if key.lower() == "authorization":
+            auth_header = value
+            break
+    
+    if not auth_header:
+        return None
+    
+    # Si es string, procesar
+    if isinstance(auth_header, str):
+        auth_header = auth_header.strip()
+        
+        # Si tiene "Bearer ", extraer el token
+        if auth_header.lower().startswith("bearer "):
+            return auth_header.split(" ", 1)[1].strip()
+        
+        # Si no tiene "Bearer ", devolver el token directamente
+        return auth_header
+    
     return None
 
 def validate_token(token):
