@@ -6,15 +6,14 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 from decimal import Decimal
+from common_auth import get_bearer_token, get_user_from_token
 
 # ==== Variables de entorno ====
 TABLE_PEDIDOS = os.environ["TABLE_PEDIDOS"]
-TOKENS_TABLE_USERS = os.environ["TOKENS_TABLE_USERS"]
 
 # ==== Clientes AWS ====
 dynamodb = boto3.resource("dynamodb")
 pedidos_table = dynamodb.Table(TABLE_PEDIDOS)
-tokens_table = dynamodb.Table(TOKENS_TABLE_USERS)
 eventbridge = boto3.client("events")  # bus por defecto
 
 CORS_HEADERS = {
@@ -38,15 +37,7 @@ def _parse_body(event):
         body = {}
     return body
 
-def _get_auth_token(event):
-    headers = event.get("headers") or {}
-    auth = headers.get("Authorization") or headers.get("authorization") or ""
-    auth = auth.strip()
-    if not auth:
-        return None
-    if auth.lower().startswith("bearer "):
-        return auth[7:].strip()
-    return auth
+
 
 def _validate_payload(p):
     required = ["tenant_id","local_id","usuario_correo","direccion","costo","estado"]
@@ -89,13 +80,7 @@ def _validate_payload(p):
 
     return True, None
 
-def _get_token_item(token):
-    try:
-        r = tokens_table.get_item(Key={"token": token})
-        return r.get("Item")
-    except Exception as e:
-        print(f"Error get_item tokens: {e}")
-        return None
+
 
 def _now_iso():
     return datetime.now(timezone.utc).isoformat()
@@ -136,20 +121,12 @@ def lambda_handler(event, context):
         return _resp(200, {"ok": True})
 
     body = _parse_body(event)
-    token = _get_auth_token(event)
-    if not token:
-        return _resp(403, {"error": "Falta header Authorization"})
-
-    # El token ya fue validado por el authorizer de API Gateway
-    token_item = _get_token_item(token)
-    if not token_item:
-        return _resp(403, {"error": "Token no encontrado"})
     
-    rol = token_item.get("rol") or token_item.get("role")
-    correo_token = token_item.get("user_id") or token_item.get("correo") or token_item.get("email") or token_item.get("usuario_correo")
-    
-    if not correo_token:
-        return _resp(403, {"error": "Token sin correo asociado"})
+    # Validar token y obtener usuario
+    token = get_bearer_token(event)
+    correo_token, rol, error = get_user_from_token(token)
+    if error:
+        return _resp(403, {"error": error})
 
     ok, msg = _validate_payload(body)
     if not ok:

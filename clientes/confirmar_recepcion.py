@@ -1,17 +1,15 @@
-
 import os
 import json
 import re
 from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
+from common_auth import get_bearer_token, get_user_from_token
 
 TABLE_PEDIDOS = os.environ["TABLE_PEDIDOS"]
-TOKENS_TABLE_USERS = os.environ["TOKENS_TABLE_USERS"]
 
 dynamodb = boto3.resource("dynamodb")
 pedidos_table = dynamodb.Table(TABLE_PEDIDOS)
-tokens_table = dynamodb.Table(TOKENS_TABLE_USERS)
 eventbridge = boto3.client("events")  # bus por defecto
 
 CORS_HEADERS = {
@@ -35,23 +33,7 @@ def _parse_body(event):
         body = {}
     return body
 
-def _get_auth_token(event):
-    headers = event.get("headers") or {}
-    auth = headers.get("Authorization") or headers.get("authorization") or ""
-    auth = auth.strip()
-    if not auth:
-        return None
-    if auth.lower().startswith("bearer "):
-        return auth[7:].strip()
-    return auth
 
-def _get_token_item(token):
-    try:
-        r = tokens_table.get_item(Key={"token": token})
-        return r.get("Item")
-    except Exception as e:
-        print(f"Error get_item tokens: {e}")
-        return None
 
 def lambda_handler(event, context):
     # CORS preflight
@@ -61,20 +43,11 @@ def lambda_handler(event, context):
     if method != "POST":
         return _resp(405, {"error": "Método no permitido"})
 
-    # Auth - El token ya fue validado por el authorizer de API Gateway
-    token = _get_auth_token(event)
-    if not token:
-        return _resp(403, {"error": "Falta header Authorization"})
-
-    token_item = _get_token_item(token)
-    if not token_item:
-        return _resp(403, {"error": "Token no encontrado"})
-    
-    rol = token_item.get("rol") or token_item.get("role")
-    correo_token = token_item.get("user_id") or token_item.get("correo") or token_item.get("email") or token_item.get("usuario_correo")
-    
-    if not correo_token:
-        return _resp(403, {"error": "Token sin correo asociado"})
+    # Validar token y obtener usuario
+    token = get_bearer_token(event)
+    correo_token, rol, error = get_user_from_token(token)
+    if error:
+        return _resp(403, {"error": error})
 
     body = _parse_body(event)
     tenant_id = (body.get("tenant_id") or "").strip()

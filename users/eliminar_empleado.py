@@ -5,15 +5,13 @@ from botocore.exceptions import ClientError
 
 # === ENV ===
 TABLE_EMPLEADOS_NAME      = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
-TABLE_USUARIOS_NAME       = os.getenv("TABLE_USUARIOS", "TABLE_USUARIOS")
+TABLE_USUARIOS_NAME       = os.getenv("USERS_TABLE", "USERS_TABLE")
 TOKENS_TABLE_USERS        = os.getenv("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
-TOKEN_VALIDATOR_FUNCTION  = os.getenv("TOKEN_VALIDATOR_FUNCTION", "TOKEN_VALIDATOR_FUNCTION")
 
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 # === AWS ===
 dynamodb   = boto3.resource("dynamodb")
-lambda_cli = boto3.client("lambda")
 
 empleados_table = dynamodb.Table(TABLE_EMPLEADOS_NAME)
 usuarios_table  = dynamodb.Table(TABLE_USUARIOS_NAME)
