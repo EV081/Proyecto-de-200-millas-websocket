@@ -96,6 +96,8 @@ def lambda_handler(event, context):
 
     # 1) Validar token
     token = get_bearer_token(event)
+    print(f"DEBUG - Token extraído: {token}")
+    print(f"DEBUG - Headers: {event.get('headers')}")
     valido, error, _ = validate_token(token)
     if not valido:
         return _resp(403, {"message": error or "Token inválido"})
