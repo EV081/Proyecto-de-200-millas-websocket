@@ -2,21 +2,23 @@ import os
 import json
 import base64
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
-from common_auth import get_bearer_token, validate_token
 
 # ---------- Config ----------
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE", "PRODUCTS_TABLE")
 IMAGES_BUCKET = os.environ.get("PRODUCTS_BUCKET", "PRODUCTS_BUCKET")
+TOKENS_TABLE = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
 dynamodb = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
 region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
 productos_table = dynamodb.Table(PRODUCTS_TABLE)
+tokens_table = dynamodb.Table(TOKENS_TABLE)
 
 CATEGORIA_ENUM = [
     "Promos Fast","Express","Promociones","Sopas Power","Bowls Del Tigre",
@@ -82,6 +84,73 @@ def _map_file_type(file_type: str) -> tuple[str, str]:
         return "image/jpeg", "jpg"
     raise ValueError("file_type debe ser 'png' o 'jpg/jpeg'")
 
+def _get_token(event):
+    """Extrae el token del header Authorization"""
+    headers = event.get("headers") or {}
+    
+    # Buscar el header Authorization (case-insensitive)
+    for key, value in headers.items():
+        if key.lower() == "authorization":
+            token = value.strip()
+            # Si tiene "Bearer ", quitarlo
+            if token.lower().startswith("bearer "):
+                return token.split(" ", 1)[1].strip()
+            return token
+    
+    return None
+
+def _validate_token_and_role(token):
+    """
+    Valida el token consultando la tabla de tokens.
+    Retorna (valido: bool, error: str, rol: str)
+    """
+    if not token:
+        return False, "Token requerido", None
+    
+    try:
+        # Consultar token en DynamoDB
+        response = tokens_table.get_item(Key={'token': token})
+        
+        if 'Item' not in response:
+            return False, "Token no existe", None
+        
+        item = response['Item']
+        expires_str = item.get('expires')
+        
+        if not expires_str:
+            return False, "Token sin fecha de expiración", None
+        
+        # Parsear fecha de expiración (soporta múltiples formatos)
+        try:
+            # Intentar formato ISO 8601: 2025-11-23T02:28:53.290513
+            if 'T' in expires_str:
+                # Remover microsegundos si existen
+                if '.' in expires_str:
+                    expires_str = expires_str.split('.')[0]
+                expires_dt = datetime.strptime(expires_str, '%Y-%m-%dT%H:%M:%S')
+            else:
+                # Formato simple: 2025-11-23 02:28:53
+                expires_dt = datetime.strptime(expires_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return False, "Formato de fecha inválido", None
+        
+        # Comparar con fecha actual
+        now = datetime.now()
+        if now > expires_dt:
+            return False, "Token expirado", None
+        
+        # Obtener rol
+        rol = item.get('rol') or item.get('role') or "Cliente"
+        
+        # Validar que sea Admin o Gerente
+        if rol not in ("Admin", "Gerente"):
+            return False, "Permiso denegado: se requiere rol Admin o Gerente", None
+        
+        return True, None, rol
+        
+    except Exception as e:
+        return False, f"Error al validar token: {str(e)}", None
+
 # ---------- Handler ----------
 def lambda_handler(event, context):
     # Preflight
@@ -94,11 +163,9 @@ def lambda_handler(event, context):
     if not PRODUCTS_TABLE:
         return _resp(500, {"message": "PRODUCTS_TABLE no configurado"})
 
-    # 1) Validar token
-    token = get_bearer_token(event)
-    print(f"DEBUG - Token extraído: {token}")
-    print(f"DEBUG - Headers: {event.get('headers')}")
-    valido, error, _ = validate_token(token)
+    # 1) Validar token y rol
+    token = _get_token(event)
+    valido, error, rol = _validate_token_and_role(token)
     if not valido:
         return _resp(403, {"message": error or "Token inválido"})
 

@@ -1,9 +1,10 @@
 import os, json, boto3
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from botocore.exceptions import ClientError
-from common_auth import get_bearer_token, get_user_from_token
 
 PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE", "")
+TOKENS_TABLE = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,9 @@ CORS_HEADERS = {
 }
 
 ALLOWED_ROLES = {"Admin", "Gerente"}
+
+dynamodb = boto3.resource("dynamodb")
+tokens_table = dynamodb.Table(TOKENS_TABLE)
 
 def _resp(code, body):
     return {
@@ -42,6 +46,63 @@ def _to_decimal(obj):
         return Decimal(str(obj))
     return obj
 
+def _get_token(event):
+    """Extrae el token del header Authorization"""
+    headers = event.get("headers") or {}
+    for key, value in headers.items():
+        if key.lower() == "authorization":
+            token = value.strip()
+            if token.lower().startswith("bearer "):
+                return token.split(" ", 1)[1].strip()
+            return token
+    return None
+
+def _validate_token_and_role(token):
+    """Valida el token y verifica que sea Admin o Gerente"""
+    if not token:
+        return False, "Token requerido", None
+    
+    try:
+        response = tokens_table.get_item(Key={'token': token})
+        
+        if 'Item' not in response:
+            return False, "Token no existe", None
+        
+        item = response['Item']
+        expires_str = item.get('expires')
+        
+        if not expires_str:
+            return False, "Token sin fecha de expiración", None
+        
+        # Parsear fecha de expiración (soporta múltiples formatos)
+        try:
+            # Intentar formato ISO 8601: 2025-11-23T02:28:53.290513
+            if 'T' in expires_str:
+                # Remover microsegundos si existen
+                if '.' in expires_str:
+                    expires_str = expires_str.split('.')[0]
+                expires_dt = datetime.strptime(expires_str, '%Y-%m-%dT%H:%M:%S')
+            else:
+                # Formato simple: 2025-11-23 02:28:53
+                expires_dt = datetime.strptime(expires_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return False, "Formato de fecha inválido", None
+        
+        # Comparar con fecha actual
+        now = datetime.now()
+        if now > expires_dt:
+            return False, "Token expirado", None
+        
+        rol = item.get('rol') or item.get('role') or "Cliente"
+        
+        if rol not in ALLOWED_ROLES:
+            return False, "Permiso denegado: se requiere rol Admin o Gerente", None
+        
+        return True, None, rol
+        
+    except Exception as e:
+        return False, f"Error al validar token: {str(e)}", None
+
 
 
 def lambda_handler(event, context):
@@ -53,14 +114,11 @@ def lambda_handler(event, context):
     if not PRODUCTS_TABLE:
         return _resp(500, {"error": "PRODUCTS_TABLE no configurado"})
 
-    # Validar token y obtener rol
-    token = get_bearer_token(event)
-    correo, role, error = get_user_from_token(token)
-    if error:
-        return _resp(403, {"error": error})
-    
-    if role not in ALLOWED_ROLES:
-        return _resp(403, {"error": "Se requiere rol Admin o Gerente"})
+    # Validar token y rol
+    token = _get_token(event)
+    valido, error, rol = _validate_token_and_role(token)
+    if not valido:
+        return _resp(403, {"error": error or "Token inválido"})
 
     # --- Body ---
     raw = _parse_body(event)
