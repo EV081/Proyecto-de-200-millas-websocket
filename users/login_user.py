@@ -1,70 +1,86 @@
-import os, json, uuid, re, boto3, time
+import os
+import json
+import uuid
+import re
+import boto3
 from datetime import datetime, timedelta
-from common import hash_password, response
+from common import hash_password
 
-USERS_TABLE         = os.environ["USERS_TABLE"]
-TOKENS_TABLE_USERS  = os.environ["TOKENS_TABLE_USERS"]
+USERS_TABLE = os.environ.get("USERS_TABLE", "USERS_TABLE")
+TOKENS_TABLE_USERS = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
+
+CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 dynamodb = boto3.resource("dynamodb")
-t_users  = dynamodb.Table(USERS_TABLE)
+t_users = dynamodb.Table(USERS_TABLE)
 t_tokens = dynamodb.Table(TOKENS_TABLE_USERS)
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+def _resp(code, body):
+    return {
+        "statusCode": code,
+        "headers": {"Content-Type": "application/json", **CORS_HEADERS},
+        "body": json.dumps(body, ensure_ascii=False)
+    }
 
 def _normalize_email(value: str) -> str:
     return (value or "").strip().lower()
 
 def lambda_handler(event, context):
     try:
+        # Parsear body
         body = json.loads(event.get("body") or "{}")
-
-        correo_in   = body.get("correo")
+        
+        correo_in = body.get("correo")
         password_in = body.get("contrasena")
-
+        
         correo = _normalize_email(correo_in)
-
-        # Validaciones mínimas (según schema)
+        
+        # Validaciones
         if not (correo and password_in):
-            return response(400, {"error": "correo y contrasena son requeridos"})
+            return _resp(400, {"error": "correo y contrasena son requeridos"})
         if not EMAIL_RE.match(correo):
-            return response(400, {"error": "correo inválido"})
-
-        # Buscar usuario por PK = correo
-        db = t_users.get_item(Key={"correo": correo})
-        user = db.get("Item")
-
-        # Si no existe o hash no coincide => 403
-        if not user:
-            return response(403, {"error": "Credenciales inválidas"})
-
-        stored_hash = user.get("contrasena")  # en este diseño guardamos el hash en el mismo campo 'contrasena'
-        if not stored_hash or stored_hash != hash_password(password_in):
-            return response(403, {"error": "Credenciales inválidas"})
-
-        # Generar token + expiración (60 min)
+            return _resp(400, {"error": "correo inválido"})
+        
+        # Buscar usuario
+        response = t_users.get_item(Key={"correo": correo})
+        
+        if 'Item' not in response:
+            return _resp(403, {"error": "Usuario no existe"})
+        
+        user = response['Item']
+        hashed_password_bd = user.get("contrasena")
+        
+        # Verificar contraseña
+        hashed_password = hash_password(password_in)
+        if hashed_password != hashed_password_bd:
+            return _resp(403, {"error": "Password incorrecto"})
+        
+        # Generar token
         token = str(uuid.uuid4())
-        expires_dt = datetime.utcnow() + timedelta(minutes=60)
-
-        # Guardar token; incluimos TTL (epoch seg) si configuraste TTL en la tabla.
-        # Cambia 'ttl' si tu atributo TTL tiene otro nombre.
-        ttl_epoch = int(time.time()) + 60 * 60
-
-        put_item = {
-            "token": token,                 # PK de la tabla de tokens
-            "correo": correo,
-            "role": user.get("role", "Cliente"),
-            "expires_iso": expires_dt.isoformat(),  # legible
-            "ttl": ttl_epoch                              # útil si activaste TTL
+        fecha_hora_exp = datetime.now() + timedelta(minutes=60)
+        
+        # Obtener rol del usuario
+        rol = user.get("rol") or user.get("role") or "Cliente"
+        
+        # Guardar token en la tabla
+        registro = {
+            'token': token,
+            'user_id': correo,
+            'rol': rol,
+            'expires': fecha_hora_exp.strftime('%Y-%m-%d %H:%M:%S')
         }
-
-        t_tokens.put_item(Item=put_item)
-
-        return response(200, {
+        
+        t_tokens.put_item(Item=registro)
+        
+        # Retornar token
+        return _resp(200, {
             "token": token,
-            "expires": expires_dt.isoformat(),
+            "expires": fecha_hora_exp.strftime('%Y-%m-%d %H:%M:%S'),
             "correo": correo,
-            "role": user.get("role", "Cliente")
+            "rol": rol
         })
-
+        
     except Exception as e:
-        return response(500, {"error": str(e)})
+        return _resp(500, {"error": str(e)})
