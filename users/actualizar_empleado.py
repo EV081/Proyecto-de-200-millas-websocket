@@ -5,15 +5,13 @@ from botocore.exceptions import ClientError
 
 # === ENV ===
 TABLE_EMPLEADOS_NAME      = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
-TABLE_USUARIOS_NAME       = os.getenv("TABLE_USUARIOS", "TABLE_USUARIOS")
+TABLE_USUARIOS_NAME       = os.getenv("USERS_TABLE", "USERS_TABLE")
 TOKENS_TABLE_USERS        = os.getenv("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
-TOKEN_VALIDATOR_FUNCTION  = os.getenv("TOKEN_VALIDATOR_FUNCTION", "TOKEN_VALIDATOR_FUNCTION")
 
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 # === AWS ===
 dynamodb   = boto3.resource("dynamodb")
-lambda_cli = boto3.client("lambda")
 
 empleados_table = dynamodb.Table(TABLE_EMPLEADOS_NAME)
 usuarios_table  = dynamodb.Table(TABLE_USUARIOS_NAME)
@@ -50,30 +48,6 @@ def _get_bearer_token(event):
         pass
     return None
 
-def _invocar_lambda_validar_token(token: str) -> dict:
-    """
-    Invoca el Lambda externo de validación de token.
-    Debe devolver {"statusCode": 200|403, "body": "..."}.
-    """
-    try:
-        resp = lambda_cli.invoke(
-            FunctionName=TOKEN_VALIDATOR_FUNCTION,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({"token": token}).encode("utf-8"),
-        )
-        payload = resp.get("Payload")
-        if not payload:
-            return {"valido": False, "error": "Error interno al validar token"}
-        raw = payload.read().decode("utf-8")
-        data = json.loads(raw) if raw else {}
-        if data.get("statusCode") != 200:
-            body = data.get("body")
-            msg = body if isinstance(body, str) else (json.dumps(body) if body else "Token inválido")
-            return {"valido": False, "error": msg}
-        return {"valido": True}
-    except Exception as e:
-        return {"valido": False, "error": f"Error llamando validador: {str(e)}"}
-
 def _resolver_usuario_desde_token(token: str):
     """
     Con token válido, resolvemos correo y rol:
@@ -98,16 +72,12 @@ def _resolver_usuario_desde_token(token: str):
 
 # ---------- Handler ----------
 def lambda_handler(event, context):
-    # 1) Autenticación por Bearer y validación por Lambda externo
+    # El token ya fue validado por el authorizer de API Gateway
     token = _get_bearer_token(event)
     if not token:
         return _resp(401, {"message": "Token requerido"})
 
-    valid = _invocar_lambda_validar_token(token)
-    if not valid.get("valido"):
-        return _resp(401, {"message": valid.get("error", "Token inválido")})
-
-    # 2) Resolver usuario autenticado (correo y rol)
+    # Resolver usuario autenticado (correo y rol)
     correo_aut, rol_aut, err = _resolver_usuario_desde_token(token)
     if err:
         return _resp(401, {"message": err})

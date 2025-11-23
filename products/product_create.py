@@ -5,15 +5,14 @@ from decimal import Decimal, InvalidOperation
 
 import boto3
 from botocore.exceptions import ClientError
+from common_auth import get_bearer_token, validate_token
 
 # ---------- Config ----------
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE", "PRODUCTS_TABLE")
-IMAGES_BUCKET = os.environ.get("PRODUCT_IMAGES_BUCKET", "PRODUCT_IMAGES_BUCKET")
-TOKEN_VALIDATOR_FUNCTION = os.environ.get("TOKEN_VALIDATOR_FUNCTION", "")
+IMAGES_BUCKET = os.environ.get("PRODUCTS_BUCKET", "PRODUCTS_BUCKET")
 
 dynamodb = boto3.resource("dynamodb")
-lambda_client = boto3.client("lambda")
 s3 = boto3.client("s3")
 region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
@@ -40,27 +39,6 @@ def _parse_body(event):
     elif not isinstance(body, dict):
         body = {}
     return body
-
-def _extract_bearer_token(headers: dict) -> str:
-    auth_header = headers.get("Authorization") or headers.get("authorization") or ""
-    return auth_header.split(" ", 1)[1].strip() if auth_header.lower().startswith("bearer ") else auth_header.strip()
-
-def _validate_token_with_lambda(token: str) -> tuple[bool, str]:
-    """Invoca la Lambda de validación: espera statusCode 200 si es válido."""
-    if not TOKEN_VALIDATOR_FUNCTION:
-        return False, "TOKEN_VALIDATOR_FUNCTION no configurado"
-    try:
-        lambda_client = boto3.client('lambda')
-        payload_string = '{ "token": "' + token + '" }'
-        invoke_response = lambda_client.invoke(
-            FunctionName=TOKEN_VALIDATOR_FUNCTION,
-            InvocationType='RequestResponse',
-            Payload=payload_string
-        )
-        response = json.loads(invoke_response['Payload'].read())
-        return (response.get("statusCode") == 200, response.get("body", "Token inválido"))
-    except Exception as e:
-        return False, f"Error invocando validador: {e}"
 
 def _to_decimal(n):
     if isinstance(n, Decimal):
@@ -112,18 +90,15 @@ def lambda_handler(event, context):
         return _resp(204, {})
 
     if not IMAGES_BUCKET:
-        return _resp(500, {"message": "PRODUCT_IMAGES_BUCKET no configurado"})
+        return _resp(500, {"message": "PRODUCTS_BUCKET no configurado"})
     if not PRODUCTS_TABLE:
         return _resp(500, {"message": "PRODUCTS_TABLE no configurado"})
 
-    # 1) Validación de token via Lambda
-    headers = event.get("headers") or {}
-    token = _extract_bearer_token(headers)
-    if not token:
-        return _resp(401, {"message": "Token requerido"})
-    ok, msg = _validate_token_with_lambda(token)
-    if not ok:
-        return _resp(403, {"message": msg})
+    # 1) Validar token
+    token = get_bearer_token(event)
+    valido, error, _ = validate_token(token)
+    if not valido:
+        return _resp(403, {"message": error or "Token inválido"})
 
     # 2) Body + validaciones (imagen_b64 + file_type + resto del schema)
     body = _parse_body(event)

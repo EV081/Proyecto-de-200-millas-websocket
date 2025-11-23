@@ -13,7 +13,6 @@ provider:
     TOKENS_TABLE_USERS: ${env:TABLE_TOKENS_USUARIOS}
     PRODUCTS_TABLE: ${env:TABLE_PRODUCTOS}
     PRODUCTS_BUCKET: ${env:S3_BUCKET_NAME}
-    TOKEN_VALIDATOR_FUNCTION: service-users-dev-ValidarUserTokenAcceso
   layers:
     - ${cf:millas-dependencias-dev.PythonDependenciesLayerExport}  
   httpApi:
@@ -26,8 +25,6 @@ functions:
       - httpApi:
           method: POST
           path: /productos/create
-          cors: true
-          integration: lambda
     
   UpdateProduct: 
     handler: product_update.lambda_handler
@@ -35,8 +32,6 @@ functions:
       - httpApi:
           method: PUT
           path: /productos/update
-          cors: true
-          integration: lambda 
 
   DeleteProduct:
     handler: product_delete.lambda_handler
@@ -44,8 +39,6 @@ functions:
       - httpApi:
           method: DELETE
           path: /productos/delete
-          cors: true
-          integration: lambda         
 
   ProductID:
     handler: product_id.lambda_handler
@@ -53,8 +46,6 @@ functions:
       - httpApi:
           method: POST 
           path: /productos/id
-          cors: true
-          integration: lambda
 
   ListProduct:
     handler: product_list.lambda_handler
@@ -62,5 +53,3 @@ functions:
       - httpApi:
           method: POST
           path: /productos/list
-          cors: true
-          integration: lambda

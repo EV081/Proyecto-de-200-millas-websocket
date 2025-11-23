@@ -5,15 +5,14 @@ from decimal import Decimal
 from urllib.parse import urlparse
 
 from botocore.exceptions import ClientError
+from common_auth import get_bearer_token, get_user_from_token
 
 PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE")
-PRODUCTS_BUCKET = os.environ.get("PRODUCTS_BUCKET", "")  # opcional (si la URL no trae bucket)
-TOKEN_VALIDATOR_FUNCTION = os.environ.get("TOKEN_VALIDATOR_FUNCTION", "")
+PRODUCTS_BUCKET = os.environ.get("PRODUCTS_BUCKET", "")
 
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 dynamodb = boto3.resource("dynamodb")
-lambda_client = boto3.client("lambda")
 s3 = boto3.client("s3")
 table = dynamodb.Table(PRODUCTS_TABLE)
 
@@ -42,50 +41,7 @@ def _convert_decimal(obj):
         return [_convert_decimal(i) for i in obj]
     return obj
 
-def _extract_bearer_token(headers: dict) -> str:
-    auth = (headers.get("Authorization")
-            or headers.get("authorization")
-            or "").strip()
-    return auth.split(" ", 1)[1].strip() if auth.lower().startswith("bearer ") else auth
 
-def _invoke_validator(token: str):
-    if not TOKEN_VALIDATOR_FUNCTION:
-        return {"ok": False, "error": "TOKEN_VALIDATOR_FUNCTION no configurado"}
-    try:
-        payload = json.dumps({"token": token})
-        res = lambda_client.invoke(
-            FunctionName=TOKEN_VALIDATOR_FUNCTION,
-            InvocationType="RequestResponse",
-            Payload=payload.encode("utf-8"),
-        )
-        raw = res.get("Payload")
-        data = json.loads(raw.read().decode("utf-8")) if raw else {}
-        return {"ok": data.get("statusCode") == 200, "data": data}
-    except Exception as e:
-        return {"ok": False, "error": f"Error invocando validador: {e}"}
-
-def _validator_role_ok(validator_data: dict) -> bool:
-    """
-    Acepta que el validador devuelva:
-      - body string ("Token válido") -> en ese caso NO hay rol -> denegamos
-      - body JSON con {"role": "..."} o {"rol": "..."}.
-    """
-    if not validator_data:
-        return False
-    body = validator_data.get("body")
-    claims = None
-    if isinstance(body, dict):
-        claims = body
-    else:
-        # intentar parsear si vino string JSON
-        try:
-            claims = json.loads(body) if isinstance(body, str) else None
-        except Exception:
-            claims = None
-    if not isinstance(claims, dict):
-        return False
-    role = claims.get("role") or claims.get("rol")
-    return role in ("Admin", "Gerente")
 
 def _parse_s3_from_url(url: str):
     """
@@ -117,17 +73,13 @@ def _parse_s3_from_url(url: str):
     return (None, None)
 
 def lambda_handler(event, context):
-    # ----- Auth -----
-    headers = event.get("headers") or {}
-    token = _extract_bearer_token(headers)
-    if not token:
-        return _resp(401, {"message": "Token requerido"})
-
-    val = _invoke_validator(token)
-    if not val.get("ok"):
-        return _resp(403, {"message": val.get("error") or val.get("data", {}).get("body") or "Acceso no autorizado"})
-
-    if not _validator_role_ok(val.get("data", {})):
+    # Validar token y obtener rol
+    token = get_bearer_token(event)
+    correo, role, error = get_user_from_token(token)
+    if error:
+        return _resp(403, {"message": error})
+    
+    if role not in ("Admin", "Gerente"):
         return _resp(403, {"message": "Se requiere rol Admin o Gerente"})
 
     # ----- Body -----

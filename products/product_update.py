@@ -1,9 +1,9 @@
 import os, json, boto3
 from decimal import Decimal, InvalidOperation
 from botocore.exceptions import ClientError
+from common_auth import get_bearer_token, get_user_from_token
 
 PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE", "")
-TOKEN_VALIDATOR_FUNCTION = os.environ.get("TOKEN_VALIDATOR_FUNCTION", "")
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -11,9 +11,6 @@ CORS_HEADERS = {
     "Access-Control-Allow-Methods": "OPTIONS,POST"
 }
 
-# Si quieres exigir SIEMPRE rol Admin/Gerente, pon True.
-# Si lo dejas en False, solo se verifica rol si el validador lo envía.
-REQUIRE_ROLE = False
 ALLOWED_ROLES = {"Admin", "Gerente"}
 
 def _resp(code, body):
@@ -45,45 +42,7 @@ def _to_decimal(obj):
         return Decimal(str(obj))
     return obj
 
-def _extract_bearer(headers: dict) -> str:
-    h = (headers or {}).get("Authorization") or (headers or {}).get("authorization") or ""
-    h = h.strip()
-    return h.split(" ", 1)[1].strip() if h.lower().startswith("bearer ") else h
 
-def _invoke_token_validator(token: str):
-    if not TOKEN_VALIDATOR_FUNCTION:
-        return {"ok": False, "error": "TOKEN_VALIDATOR_FUNCTION no configurado"}
-    try:
-        lambda_client = boto3.client("lambda")
-        payload_string = json.dumps({"token": token})
-        invoke_response = lambda_client.invoke(
-            FunctionName=TOKEN_VALIDATOR_FUNCTION,
-            InvocationType="RequestResponse",
-            Payload=payload_string.encode("utf-8")
-        )
-        data = json.loads(invoke_response["Payload"].read().decode("utf-8"))
-        return {"ok": data.get("statusCode") == 200, "data": data}
-    except Exception as e:
-        return {"ok": False, "error": f"Error invocando validador: {e}"}
-
-def _extract_role(validator_data: dict):
-    """
-    Intenta leer rol/role del body del validador.
-    Soporta body string o JSON.
-    """
-    if not validator_data:
-        return None
-    body = validator_data.get("body")
-    if isinstance(body, dict):
-        return body.get("rol") or body.get("role")
-    if isinstance(body, str):
-        try:
-            j = json.loads(body)
-            if isinstance(j, dict):
-                return j.get("rol") or j.get("role")
-        except Exception:
-            return None
-    return None
 
 def lambda_handler(event, context):
     # CORS preflight
@@ -94,20 +53,14 @@ def lambda_handler(event, context):
     if not PRODUCTS_TABLE:
         return _resp(500, {"error": "PRODUCTS_TABLE no configurado"})
 
-    # --- Auth ---
-    token = _extract_bearer(event.get("headers") or {})
-    if not token:
-        return _resp(401, {"error": "Token requerido"})
-
-    v = _invoke_token_validator(token)
-    if not v.get("ok"):
-        # Si tu validador devuelve 403 u otro, reflejamos
-        return _resp(403, {"error": v.get("error") or v.get("data", {}).get("body") or "Acceso no autorizado"})
-
-    role = _extract_role(v.get("data", {}))
-    if REQUIRE_ROLE or role is not None:
-        if role not in ALLOWED_ROLES:
-            return _resp(403, {"error": "Se requiere rol Admin o Gerente"})
+    # Validar token y obtener rol
+    token = get_bearer_token(event)
+    correo, role, error = get_user_from_token(token)
+    if error:
+        return _resp(403, {"error": error})
+    
+    if role not in ALLOWED_ROLES:
+        return _resp(403, {"error": "Se requiere rol Admin o Gerente"})
 
     # --- Body ---
     raw = _parse_body(event)
