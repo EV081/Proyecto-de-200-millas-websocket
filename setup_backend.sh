@@ -172,13 +172,59 @@ deploy_services() {
   echo -e "\n${BLUE}🚀 Desplegando microservicios con Serverless...${NC}"
   prepare_dependencies
   # upload_airflow_dag   # ← activa si usas Airflow
+  
+  # Desplegar servicios principales
+  echo -e "${YELLOW}📦 Desplegando servicios principales...${NC}"
   sls deploy
-  echo -e "${GREEN}✅ Microservicios desplegados${NC}"
+  
+  # Desplegar Step Functions
+  if [[ -d "stepFunction" ]]; then
+    echo -e "${YELLOW}⚙️  Desplegando Step Functions...${NC}"
+    pushd stepFunction > /dev/null
+    sls deploy
+    popd > /dev/null
+    echo -e "${GREEN}✅ Step Functions desplegado${NC}"
+  else
+    echo -e "${YELLOW}ℹ️  No se encontró directorio stepFunction, saltando...${NC}"
+  fi
+  
+  # Desplegar servicio de empleados
+  if [[ -d "servicio-empleados" ]]; then
+    echo -e "${YELLOW}👥 Desplegando servicio de empleados...${NC}"
+    pushd servicio-empleados > /dev/null
+    sls deploy
+    popd > /dev/null
+    echo -e "${GREEN}✅ Servicio de empleados desplegado${NC}"
+  else
+    echo -e "${YELLOW}ℹ️  No se encontró directorio servicio-empleados, saltando...${NC}"
+  fi
+  
+  echo -e "${GREEN}✅ Todos los microservicios desplegados${NC}"
 }
 
 remove_services() {
   echo -e "\n${RED}🗑️  Eliminando microservicios...${NC}"
+  
+  # Eliminar servicio de empleados
+  if [[ -d "servicio-empleados" ]]; then
+    echo -e "${YELLOW}Eliminando servicio de empleados...${NC}"
+    pushd servicio-empleados > /dev/null
+    sls remove || true
+    popd > /dev/null
+  fi
+  
+  # Eliminar Step Functions
+  if [[ -d "stepFunction" ]]; then
+    echo -e "${YELLOW}Eliminando Step Functions...${NC}"
+    pushd stepFunction > /dev/null
+    sls remove || true
+    popd > /dev/null
+  fi
+  
+  # Eliminar servicios principales
+  echo -e "${YELLOW}Eliminando servicios principales...${NC}"
   sls remove || true
+  
   echo -e "${GREEN}✅ Microservicios eliminados${NC}"
 }
 
