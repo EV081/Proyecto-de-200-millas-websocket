@@ -141,10 +141,12 @@ def generar_productos(locales, cantidad=None):
         local = random.choice(locales)
         categoria = random.choice(CATEGORIAS_PRODUCTO)
         nombre = f"{categoria} {i+1}"
+        producto_id = str(uuid.uuid4())  # UUID único
         slug = generar_slug(nombre)
         imagen_url = f"{BASE_URL_IMAGENES}/{local['local_id'].lower()}/{slug}.jpg"
         productos.append({
             "local_id": local["local_id"],
+            "producto_id": producto_id,  # UUID
             "nombre": nombre,
             "precio": round(random.uniform(15, 80), 2),
             "descripcion": f"Delicioso plato de la categoría {categoria}",

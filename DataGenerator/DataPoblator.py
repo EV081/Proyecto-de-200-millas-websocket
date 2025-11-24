@@ -69,7 +69,7 @@ if TABLE_PRODUCTOS:
     TABLE_MAPPING["productos.json"] = {
         "table_name": TABLE_PRODUCTOS,
         "pk": "local_id",
-        "sk": "nombre"
+        "sk": "producto_id"  # Cambió de nombre a producto_id
     }
 
 # Pedidos (PK=local_id, SK=pedido_id)
@@ -482,16 +482,16 @@ def create_all_resources():
     ):
         return False
     
-    # Productos: PK = local_id, SK = nombre
+    # Productos: PK = local_id, SK = producto_id
     if not create_dynamodb_table(
         table_name=TABLE_PRODUCTOS,
         key_schema=[
             {'AttributeName': 'local_id', 'KeyType': 'HASH'},
-            {'AttributeName': 'nombre', 'KeyType': 'RANGE'}
+            {'AttributeName': 'producto_id', 'KeyType': 'RANGE'}
         ],
         attribute_definitions=[
             {'AttributeName': 'local_id', 'AttributeType': 'S'},
-            {'AttributeName': 'nombre', 'AttributeType': 'S'}
+            {'AttributeName': 'producto_id', 'AttributeType': 'S'}
         ]
     ):
         return False

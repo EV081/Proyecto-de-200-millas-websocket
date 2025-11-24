@@ -436,7 +436,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"local_id\": \"{{local_id}}\",\n  \"nombre\": \"Ceviches 1\"\n}"
+                            "raw": "{\n  \"local_id\": \"{{local_id}}\",\n  \"producto_id\": \"PRODUCTO_ID_UUID_AQUI\"\n}"
                         },
                         "url": {
                             "raw": "{{products_url}}/productos/id",
@@ -503,7 +503,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"local_id\": \"{{local_id}}\",\n  \"nombre\": \"Ceviche de Conchas Negras Premium\",\n  \"precio\": 48.00,\n  \"descripcion\": \"Delicioso ceviche preparado con conchas negras frescas - ACTUALIZADO\",\n  \"stock\": 15\n}"
+                            "raw": "{\n  \"local_id\": \"{{local_id}}\",\n  \"producto_id\": \"PRODUCTO_ID_UUID_AQUI\",\n  \"precio\": 48.00,\n  \"descripcion\": \"Delicioso ceviche preparado con conchas negras frescas - ACTUALIZADO\",\n  \"stock\": 15\n}"
                         },
                         "url": {
                             "raw": "{{products_url}}/productos/update",
@@ -534,7 +534,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"local_id\": \"{{local_id}}\",\n  \"nombre\": \"Ceviche de Conchas Negras Premium\"\n}"
+                            "raw": "{\n  \"local_id\": \"{{local_id}}\",\n  \"producto_id\": \"PRODUCTO_ID_UUID_AQUI\"\n}"
                         },
                         "url": {
                             "raw": "{{products_url}}/productos/delete",

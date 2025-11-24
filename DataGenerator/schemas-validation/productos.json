@@ -4,13 +4,27 @@
   "type": "object",
   "x-dynamodb": {
     "partition_key": "local_id",
-    "sort_key": "nombre"
+    "sort_key": "producto_id"
   },
   "properties": {
-    "local_id": { "type": "string" },
-    "nombre": { "type": "string", "minLength": 1 },
-    "precio": { "type": "number", "minimum": 0 },
-    "descripcion": { "type": "string" },
+    "local_id": {
+      "type": "string"
+    },
+    "producto_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nombre": {
+      "type": "string",
+      "minLength": 1
+    },
+    "precio": {
+      "type": "number",
+      "minimum": 0
+    },
+    "descripcion": {
+      "type": "string"
+    },
     "categoria": {
       "type": "string",
       "enum": [
@@ -32,9 +46,23 @@
         "Familiares"
       ]
     },
-    "stock": { "type": "integer", "minimum": 0 },
-    "imagen_url": { "type": "string", "format": "uri" }
+    "stock": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "imagen_url": {
+      "type": "string",
+      "format": "uri"
+    }
   },
-  "required": ["local_id", "nombre", "precio", "categoria", "stock", "imagen_url"],
+  "required": [
+    "local_id",
+    "producto_id",
+    "nombre",
+    "precio",
+    "categoria",
+    "stock",
+    "imagen_url"
+  ],
   "additionalProperties": false
 }

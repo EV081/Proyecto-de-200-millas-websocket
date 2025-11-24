@@ -70,28 +70,17 @@ def lambda_handler(event, context):
     raw = _parse_body(event)
     data = _to_decimal(raw)
 
-    # Claves admitidas:
-    #   esquema legado: tenant_id + product_id
-    #   esquema actual: local_id + nombre
-    tenant_id = data.pop("tenant_id", None)
-    product_id = data.pop("product_id", None)
-    local_id   = data.pop("local_id", None)
-    nombre     = data.pop("nombre", None)
+    # Claves: local_id + producto_id
+    local_id = data.pop("local_id", None)
+    producto_id = data.pop("producto_id", None)
 
-    # Resolver clave real a usar
-    key = None
-    if tenant_id and product_id:
-        key = {"tenant_id": tenant_id, "product_id": product_id}
-        pk_name, sk_name = "tenant_id", "product_id"
-    elif local_id and nombre:
-        key = {"local_id": local_id, "nombre": nombre}
-        pk_name, sk_name = "local_id", "nombre"
-    else:
-        # Mensaje claro según lo que falte
-        return _resp(400, {"error": "Faltan claves. Usa (tenant_id, product_id) o (local_id, nombre)"})
+    if not (local_id and producto_id):
+        return _resp(400, {"error": "Faltan claves: local_id y producto_id son requeridos"})
+    
+    key = {"local_id": local_id, "producto_id": producto_id}
 
-    # No permitir que intenten cambiar PK/SK en el update:
-    for forbidden in ("tenant_id", "product_id", "local_id", "nombre"):
+    # No permitir que intenten cambiar PK/SK en el update
+    for forbidden in ("local_id", "producto_id"):
         if forbidden in data:
             data.pop(forbidden, None)
 

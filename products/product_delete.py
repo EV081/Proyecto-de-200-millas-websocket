@@ -87,23 +87,18 @@ def lambda_handler(event, context):
     # ----- Body -----
     data = _parse_body(event)
 
-    # Acepta ambos contratos:
-    # (1) actual: local_id + nombre
+    # Claves: local_id + producto_id
     local_id = data.get("local_id")
-    nombre = data.get("nombre")
-    # (2) legado: tenant_id + product_id
-    if not (local_id and nombre):
-        local_id = local_id or data.get("tenant_id")
-        nombre = nombre or data.get("product_id")
+    producto_id = data.get("producto_id")
 
     if not local_id:
         return _resp(400, {"error": "Falta local_id en el body"})
-    if not nombre:
-        return _resp(400, {"error": "Falta nombre en el body"})
+    if not producto_id:
+        return _resp(400, {"error": "Falta producto_id en el body"})
 
     # ----- Buscar item -----
     try:
-        res = table.get_item(Key={"local_id": local_id, "nombre": nombre})
+        res = table.get_item(Key={"local_id": local_id, "producto_id": producto_id})
     except ClientError as e:
         return _resp(500, {"error": f"Error al obtener producto: {e}"})
 
@@ -130,8 +125,8 @@ def lambda_handler(event, context):
     # ----- Borrar item DDB con condición -----
     try:
         del_res = table.delete_item(
-            Key={"local_id": local_id, "nombre": nombre},
-            ConditionExpression="attribute_exists(local_id) AND attribute_exists(nombre)",
+            Key={"local_id": local_id, "producto_id": producto_id},
+            ConditionExpression="attribute_exists(local_id) AND attribute_exists(producto_id)",
             ReturnValues="ALL_OLD"
         )
     except ClientError as e:

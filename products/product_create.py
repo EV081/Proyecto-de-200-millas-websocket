@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import uuid
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 
@@ -162,7 +163,10 @@ def lambda_handler(event, context):
     except Exception as e:
         return _resp(400, {"message": f"imagen_b64 inválida: {e}"})
 
-    # 4) Subir imagen a S3 con código interno <local_id>-<slug(nombre)>.<ext>
+    # 4) Generar producto_id único: UUID
+    producto_id = str(uuid.uuid4())
+    
+    # 5) Subir imagen a S3 con código interno <local_id>-<slug(nombre)>.<ext>
     codigo_producto = f"{local_id.strip()}-{_slug(nombre)}"
     object_key = f"{codigo_producto}.{ext}"
 
@@ -186,9 +190,10 @@ def lambda_handler(event, context):
     # HTTPS URL (no s3://). Requiere que el objeto sea público o que generes URL firmada aparte.
     imagen_url_https = f"https://{IMAGES_BUCKET}.s3.{region}.amazonaws.com/{object_key}"
 
-    # 5) Guardar producto en DynamoDB
+    # 6) Guardar producto en DynamoDB
     item = {
         "local_id": local_id.strip(),
+        "producto_id": producto_id,      # Nuevo: Sort Key
         "nombre": nombre.strip(),
         "precio": precio,                # Decimal -> DDB Number
         "descripcion": descripcion or "",
@@ -201,18 +206,19 @@ def lambda_handler(event, context):
         productos_table.put_item(
             Item=item,
             ConditionExpression="attribute_not_exists(#pk) AND attribute_not_exists(#sk)",
-            ExpressionAttributeNames={"#pk": "local_id", "#sk": "nombre"}
+            ExpressionAttributeNames={"#pk": "local_id", "#sk": "producto_id"}
         )
     except ClientError as e:
         code = e.response.get("Error", {}).get("Code")
         if code == "ConditionalCheckFailedException":
-            return _resp(409, {"message": "Ya existe un producto con ese local_id y nombre"})
+            return _resp(409, {"message": "Ya existe un producto con ese producto_id"})
         return _resp(500, {"message": f"Error al crear el producto: {e}"})
 
     return _resp(201, {
         "message": "Producto creado correctamente",
         "producto": {
             "local_id": item["local_id"],
+            "producto_id": item["producto_id"],
             "nombre": item["nombre"],
             "categoria": item["categoria"],
             "precio": str(item["precio"]),

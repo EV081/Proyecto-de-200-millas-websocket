@@ -1,82 +1,59 @@
 import os
 import json
 import boto3
-from decimal import Decimal
 from botocore.exceptions import ClientError
 
-PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE", "")
+# ---------- Config ----------
+CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
+PRODUCTS_TABLE = os.environ.get("PRODUCTS_TABLE", "PRODUCTS_TABLE")
 
-CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "OPTIONS,POST"
-}
+dynamodb = boto3.resource("dynamodb")
+productos_table = dynamodb.Table(PRODUCTS_TABLE)
 
-def _resp(code, body):
+# ---------- Helpers ----------
+def _resp(code, payload=None):
     return {
         "statusCode": code,
         "headers": {"Content-Type": "application/json", **CORS_HEADERS},
-        "body": json.dumps(body, ensure_ascii=False, default=str)
+        "body": json.dumps(payload or {}, ensure_ascii=False, default=str)
     }
 
 def _parse_body(event):
-    body = event.get("body")
+    body = event.get("body", {})
     if isinstance(body, str):
-        return json.loads(body) if body.strip() else {}
-    return body if isinstance(body, dict) else {}
+        body = json.loads(body) if body.strip() else {}
+    elif not isinstance(body, dict):
+        body = {}
+    return body
 
-def _convert_decimal(obj):
-    if isinstance(obj, Decimal):
-        return float(obj)
-    if isinstance(obj, dict):
-        return {k: _convert_decimal(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_convert_decimal(i) for i in obj]
-    return obj
-
+# ---------- Handler ----------
 def lambda_handler(event, context):
-    # Preflight CORS
+    # Preflight
     method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method")
     if method == "OPTIONS":
         return _resp(204, {})
 
-    # Solo POST
-    if method != "POST":
-        return _resp(405, {"error": "Método no permitido. Usa POST."})
-
-    if not PRODUCTS_TABLE:
-        return _resp(500, {"error": "PRODUCTS_TABLE no configurado"})
-
-    ddb = boto3.resource("dynamodb")
-    table = ddb.Table(PRODUCTS_TABLE)
-
-    # Leer únicamente del body
     body = _parse_body(event)
-
-    # Claves legado
-    tenant_id = body.get("tenant_id")
-    product_id = body.get("product_id")
-    # Claves actuales
+    
+    # Buscar por local_id y producto_id
     local_id = body.get("local_id")
-    nombre   = body.get("nombre")
-
-    if tenant_id and product_id:
-        key = {"tenant_id": tenant_id, "product_id": product_id}
-    elif local_id and nombre:
-        key = {"local_id": local_id, "nombre": nombre}
-    else:
-        return _resp(400, {
-            "error": "Faltan claves. Usa (tenant_id, product_id) o (local_id, nombre) en el body."
-        })
-
+    producto_id = body.get("producto_id")
+    
+    if not local_id:
+        return _resp(400, {"error": "Falta el campo local_id en el body"})
+    
+    if not producto_id:
+        return _resp(400, {"error": "Falta el campo producto_id en el body"})
+    
+    # Buscar producto
     try:
-        r = table.get_item(Key=key)
+        response = productos_table.get_item(
+            Key={"local_id": local_id, "producto_id": producto_id}
+        )
     except ClientError as e:
-        return _resp(500, {"error": f"Error al obtener producto: {e}"})
-
-    item = r.get("Item")
-    if not item:
+        return _resp(500, {"error": f"Error al buscar producto: {str(e)}"})
+    
+    if "Item" not in response:
         return _resp(404, {"error": "Producto no encontrado"})
-
-    item = _convert_decimal(item)
-    return _resp(200, {"item": item})
+    
+    return _resp(200, {"producto": response["Item"]})

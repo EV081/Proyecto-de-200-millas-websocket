@@ -67,7 +67,6 @@ def lambda_handler(event, context):
         nombre   = (body.get("nombre") or "").strip()
         apellido = (body.get("apellido") or "").strip()
         emp_role = (body.get("role") or "").strip()
-        ocupado  = _as_bool(body.get("ocupado", False))
 
         faltantes = [k for k, v in {
             "local_id": local_id, "dni": dni, "nombre": nombre, "apellido": apellido, "role": emp_role
@@ -78,17 +77,13 @@ def lambda_handler(event, context):
         if emp_role not in ROLES_VALIDOS:
             return response(400, {"error": f"role debe ser uno de {sorted(ROLES_VALIDOS)}"})
 
-        if ocupado is None:
-            return response(400, {"error": "ocupado debe ser booleano"})
-
         # === 4) Insertar empleado (PK=local_id, SK=dni) ===
         item = {
             "local_id": local_id,
             "dni": dni,
             "nombre": nombre,
             "apellido": apellido,
-            "role": emp_role,
-            "ocupado": ocupado,
+            "role": emp_role
         }
 
         t_employee.put_item(
