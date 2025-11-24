@@ -2,20 +2,17 @@ import json
 import os
 import boto3
 from botocore.exceptions import ClientError
+from auth_helper import get_bearer_token, validate_token_via_lambda
 
 # === ENV ===
 TABLE_EMPLEADOS_NAME      = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
 TABLE_USUARIOS_NAME       = os.getenv("USERS_TABLE", "USERS_TABLE")
 TOKENS_TABLE_USERS        = os.getenv("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
-# Nombre de la lambda validadora (fijo por tu serverless.yml, pero override-able por env)
-TOKEN_VALIDATOR_FUNCTION  = "ValidarTokenAcceso"
-
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 # === AWS ===
 dynamodb   = boto3.resource("dynamodb")
-lambda_cli = boto3.client("lambda")  # <--- cliente para invocar la Lambda validadora
 
 empleados_table = dynamodb.Table(TABLE_EMPLEADOS_NAME)
 usuarios_table  = dynamodb.Table(TABLE_USUARIOS_NAME)
@@ -35,103 +32,48 @@ def _parse_body(event):
         body = {}
     return body
 
-def _get_bearer_token(event):
-    headers = event.get("headers") or {}
-    auth_header = headers.get("Authorization") or headers.get("authorization") or ""
-    if isinstance(auth_header, str) and auth_header.lower().startswith("bearer "):
-        return auth_header.split(" ", 1)[1].strip()
-    # opcional: token en body
-    try:
-        body = json.loads(event.get("body") or "{}")
-        if body.get("token"):
-            return str(body["token"]).strip()
-    except Exception:
-        pass
-    return None
-
-def _invocar_lambda_validar_token(token: str) -> dict:
-    """
-    Invoca tu Lambda validadora de token (ValidarTokenAcceso por defecto).
-    Debe devolver {"statusCode": 200|403, "body": "..."}.
-    """
-    try:
-        # Equivalente a tu ejemplo:
-        # invoke_response = lambda_client.invoke(FunctionName="ValidarTokenAcceso", ...)
-        resp = lambda_cli.invoke(
-            FunctionName=TOKEN_VALIDATOR_FUNCTION,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({"token": token}).encode("utf-8"),
-        )
-        payload = resp.get("Payload")
-        if not payload:
-            return {"valido": False, "error": "Error interno al validar token"}
-
-        raw = payload.read().decode("utf-8")
-        data = json.loads(raw) if raw else {}
-
-        # Considera inválido todo lo que no sea 200
-        if data.get("statusCode") != 200:
-            body = data.get("body")
-            msg = body if isinstance(body, str) else (json.dumps(body) if body else "Token inválido")
-            return {"valido": False, "error": msg}
-
-        return {"valido": True}
-    except Exception as e:
-        return {"valido": False, "error": f"Error llamando validador: {str(e)}"}
-
-def _resolver_usuario_desde_token(token: str):
-    """
-    Con token válido, resolvemos correo y rol:
-    TOKENS_TABLE_USERS (token -> user_id) -> TABLE_USUARIOS (user_id=correo -> rol).
-    """
+def _get_correo_from_token(token: str):
+    """Obtiene el correo del usuario desde el token en la tabla"""
     try:
         r = tokens_table.get_item(Key={"token": token})
         item = r.get("Item")
         if not item:
-            return None, None, "Token no encontrado"
-        correo = item.get("user_id")  # En login guardas user_id = correo
-        if not correo:
-            return None, None, "Token sin usuario"
+            return None
+        return item.get("user_id")
+    except Exception:
+        return None
 
-        u = usuarios_table.get_item(Key={"correo": correo}).get("Item")
-        if not u:
-            return None, None, "Usuario no encontrado"
-        rol = u.get("rol") or u.get("role") or "Cliente"
-        return correo, rol, None
-    except Exception as e:
-        return None, None, f"Error resolviendo usuario: {str(e)}"
 
 # ---------- Handler ----------
 def lambda_handler(event, context):
-    # 1) Autenticación: Bearer + Lambda externo
-    token = _get_bearer_token(event)
-    if not token:
-        return _resp(401, {"message": "Token requerido"})
+    # 1. Validar token mediante Lambda
+    token = get_bearer_token(event)
+    valido, err, rol_aut = validate_token_via_lambda(token)
+    if not valido:
+        return _resp(401, {"message": err or "Token inválido"})
+    
+    # 2. Obtener correo del usuario autenticado
+    correo_aut = _get_correo_from_token(token)
+    if not correo_aut:
+        return _resp(401, {"message": "No se pudo obtener el usuario del token"})
 
-    valid = _invocar_lambda_validar_token(token)
-    if not valid.get("valido"):
-        return _resp(401, {"message": valid.get("error", "Token inválido")})
-
-    # 2) Resolver usuario (correo y rol)
-    correo_aut, rol_aut, err = _resolver_usuario_desde_token(token)
-    if err:
-        return _resp(401, {"message": err})
-    if not rol_aut:
-        return _resp(401, {"message": "No se pudo resolver el rol del usuario"})
-
-    # 3) Autorización: solo Admin o Gerente
+    # 3) Autorización: solo Admin o Gerente pueden eliminar empleados
     if rol_aut not in ROLES_PUEDEN_ELIMINAR:
         return _resp(403, {"message": "No tienes permiso para eliminar empleados"})
 
-    # 4) Parseo y validación de entrada
+    # 4) Parse body y validar las claves compuestas (local_id y dni)
     body = _parse_body(event)
-    empleado_id = body.get("empleado_id")
-    if not empleado_id:
-        return _resp(400, {"message": "empleado_id es obligatorio"})
+    local_id = body.get("local_id")
+    dni = body.get("dni")
+    
+    if not local_id:
+        return _resp(400, {"message": "local_id es obligatorio"})
+    if not dni:
+        return _resp(400, {"message": "dni es obligatorio"})
 
-    # 5) Verificar existencia
+    # 5) Verificar existencia usando la clave compuesta
     try:
-        resp = empleados_table.get_item(Key={"empleado_id": empleado_id})
+        resp = empleados_table.get_item(Key={"local_id": local_id, "dni": dni})
     except ClientError as e:
         return _resp(500, {"message": f"Error al obtener empleado: {str(e)}"})
 
@@ -141,8 +83,8 @@ def lambda_handler(event, context):
     # 6) Eliminar (con condición por seguridad)
     try:
         empleados_table.delete_item(
-            Key={"empleado_id": empleado_id},
-            ConditionExpression="attribute_exists(empleado_id)"
+            Key={"local_id": local_id, "dni": dni},
+            ConditionExpression="attribute_exists(local_id) AND attribute_exists(dni)"
         )
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         return _resp(404, {"message": "Empleado no encontrado"})

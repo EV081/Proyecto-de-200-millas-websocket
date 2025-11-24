@@ -108,7 +108,7 @@ def lambda_handler(event, context):
             UpdateExpression=update_expr,
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values,
-            ConditionExpression=f"attribute_exists({pk_name}) AND attribute_exists({sk_name})",
+            ConditionExpression="attribute_exists(local_id) AND attribute_exists(producto_id)",
             ReturnValues="ALL_NEW"
         )
     except ClientError as e:

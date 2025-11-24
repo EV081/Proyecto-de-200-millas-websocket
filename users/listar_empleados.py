@@ -4,17 +4,15 @@ import math
 import boto3
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key, Attr
+from auth_helper import get_bearer_token, validate_token_via_lambda
 
 TABLE_EMPLEADOS           = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
 TABLE_USUARIOS            = os.getenv("TABLE_USUARIOS", "TABLE_USUARIOS")
 TOKENS_TABLE_USERS        = os.getenv("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
-# Nombre fijo por tu serverless.yml; override-able por env si lo necesitas
-TOKEN_VALIDATOR_FUNCTION  =  "ValidarTokenAcceso"
 
 CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 dynamodb   = boto3.resource("dynamodb")
-lambda_cli = boto3.client("lambda")
 
 t_empleados = dynamodb.Table(TABLE_EMPLEADOS)
 t_usuarios  = dynamodb.Table(TABLE_USUARIOS)
@@ -31,87 +29,42 @@ def _safe_int(v, default=0):
     except Exception:
         return default
 
-def _get_bearer_token(event):
-    headers = event.get("headers") or {}
-    auth_header = headers.get("Authorization") or headers.get("authorization") or ""
-    if isinstance(auth_header, str) and auth_header.lower().startswith("bearer "):
-        return auth_header.split(" ", 1)[1].strip()
-    # fallback opcional: token en body
-    try:
-        body = json.loads(event.get("body") or "{}")
-        if body.get("token"):
-            return str(body["token"]).strip()
-    except Exception:
-        pass
-    return None
-
-def _invocar_lambda_validar_token(token: str) -> dict:
-    """Invoca el Lambda validador de token (externo). Espera {"statusCode":200|403,"body":"..."}"""
-    try:
-        resp = lambda_cli.invoke(
-            FunctionName=TOKEN_VALIDATOR_FUNCTION,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({"token": token}).encode("utf-8"),
-        )
-        payload = resp.get("Payload")
-        raw = payload.read().decode("utf-8") if payload else ""
-        data = json.loads(raw) if raw else {}
-        if data.get("statusCode") != 200:
-            body = data.get("body")
-            msg = body if isinstance(body, str) else (json.dumps(body) if body else "Token inválido")
-            return {"valido": False, "error": msg}
-        return {"valido": True}
-    except Exception as e:
-        return {"valido": False, "error": f"Error llamando validador: {str(e)}"}
-
-def _resolver_usuario_desde_token(token: str):
-    """TOKENS_TABLE_USERS (token -> user_id/correo) -> TABLE_USUARIOS (correo -> rol)"""
+def _get_correo_from_token(token: str):
+    """Obtiene el correo del usuario desde el token en la tabla"""
     try:
         r = t_tokens.get_item(Key={"token": token})
-        tok = r.get("Item")
-        if not tok:
-            return None, None, "Token no encontrado"
-        correo = tok.get("user_id")
-        if not correo:
-            return None, None, "Token sin usuario"
+        item = r.get("Item")
+        if not item:
+            return None
+        return item.get("user_id")
+    except Exception:
+        return None
 
-        u_resp = t_usuarios.get_item(Key={"correo": correo})
-        u = u_resp.get("Item")
-        if not u:
-            return None, None, "Usuario no encontrado"
-        rol = u.get("rol") or u.get("role") or "Cliente"
-        return correo, rol, None
-    except Exception as e:
-        return None, None, f"Error resolviendo usuario: {str(e)}"
 
-# ---------- Handler (patrón page/size) ----------
+# ---------- Handler ----------
 def lambda_handler(event, context):
-    # 0) Autenticación + validación externa
-    token = _get_bearer_token(event)
-    if not token:
-        return _resp(401, {"error": "Token requerido"})
+    # 1. Validar token mediante Lambda
+    token = get_bearer_token(event)
+    valido, err, rol_aut = validate_token_via_lambda(token)
+    if not valido:
+        return _resp(401, {"message": err or "Token inválido"})
+    
+    # 2. Obtener correo del usuario autenticado
+    correo_aut = _get_correo_from_token(token)
+    if not correo_aut:
+        return _resp(401, {"message": "No se pudo obtener el usuario del token"})
 
-    valid = _invocar_lambda_validar_token(token)
-    if not valid.get("valido"):
-        return _resp(401, {"error": valid.get("error", "Token inválido")})
-
-    # 0.1) Resolver usuario/rol y autorizar listado
-    correo_aut, rol_aut, err = _resolver_usuario_desde_token(token)
-    if err:
-        return _resp(401, {"error": err})
+    # 3. Autorización: solo Admin o Gerente pueden listar empleados
     if rol_aut not in ROLES_PUEDEN_LISTAR:
-        return _resp(403, {"error": "No tienes permiso para listar empleados"})
+        return _resp(403, {"message": "No tienes permiso para listar empleados"})
 
-    # 1) Body & parámetros
+    # 4. Parse body y parámetros
     try:
         body = json.loads(event.get("body") or "{}")
     except Exception:
         body = {}
 
-    tenant_id = body.get("tenant_id")
-    if not tenant_id:
-        return _resp(400, {"error": "Falta tenant_id en el body"})
-
+    # Parámetros de paginación
     page = _safe_int(body.get("page", 0), 0)
     size = _safe_int(body.get("size", body.get("limit", 10)), 10)
     if size <= 0 or size > 100:
@@ -119,80 +72,119 @@ def lambda_handler(event, context):
     if page < 0:
         page = 0
 
-    # Filtros opcionales (FilterExpression)
-    filtro_estado = body.get("estado")
-    filtro_role   = body.get("role") or body.get("rol")     # "Repartidor"/"Cocinero"/"Despachador"
-    filtro_local  = body.get("local_id")
+    # Filtros opcionales
+    filtro_local_id = body.get("local_id")
+    filtro_role = body.get("role") or body.get("rol")  # "Repartidor"/"Cocinero"/"Despachador"
 
-    # 2) Contar total por tenant (Query + Select=COUNT paginado por LEK)
-    total = 0
-    count_args = {
-        "KeyConditionExpression": Key("tenant_id").eq(tenant_id),
-        "Select": "COUNT"
-    }
-    lek = None
-    while True:
+    # 5. Decidir entre Query (si hay local_id) o Scan (todos los empleados)
+    if filtro_local_id:
+        # Query por local_id (partition key)
+        query_args = {
+            "KeyConditionExpression": Key("local_id").eq(filtro_local_id)
+        }
+        
+        # Agregar filtro de role si existe
+        if filtro_role:
+            query_args["FilterExpression"] = Attr("role").eq(filtro_role)
+        
+        # Contar total
+        count_args = query_args.copy()
+        count_args["Select"] = "COUNT"
+        total = 0
+        lek = None
+        while True:
+            if lek:
+                count_args["ExclusiveStartKey"] = lek
+            rcount = t_empleados.query(**count_args)
+            total += rcount.get("Count", 0)
+            lek = rcount.get("LastEvaluatedKey")
+            if not lek:
+                break
+        
+        # Calcular páginas
+        total_pages = math.ceil(total / size) if size > 0 else 0
+        
+        # Obtener items de la página solicitada
+        query_args["Limit"] = size
+        lek = None
+        
+        # Saltar páginas previas
+        for _ in range(page):
+            if lek:
+                query_args["ExclusiveStartKey"] = lek
+            rskip = t_empleados.query(**query_args)
+            lek = rskip.get("LastEvaluatedKey")
+            if not lek:
+                return _resp(200, {
+                    "contents": [],
+                    "page": page,
+                    "size": size,
+                    "totalElements": total,
+                    "totalPages": total_pages
+                })
+        
+        # Ejecutar query para la página actual
         if lek:
-            count_args["ExclusiveStartKey"] = lek
-        rcount = t_empleados.query(**count_args)
-        total += rcount.get("Count", 0)
-        lek = rcount.get("LastEvaluatedKey")
-        if not lek:
-            break
-
-    total_pages = math.ceil(total / size) if size > 0 else 0
-    if total_pages and page >= total_pages:
-        return _resp(200, {
-            "contents": [],
-            "page": page,
-            "size": size,
-            "totalElements": total,
-            "totalPages": total_pages
-        })
-
-    # 3) Query base para la página
-    qargs = {
-        "KeyConditionExpression": Key("tenant_id").eq(tenant_id),
-        "Limit": size
-    }
-
-    # FilterExpression si se piden filtros
-    fe = None
-    if filtro_estado in {"activo", "inactivo"}:
-        fe = Attr("estado").eq(filtro_estado)
-    if filtro_role:
-        fe = Attr("role").eq(filtro_role) if fe is None else (fe & Attr("role").eq(filtro_role))
-    if filtro_local:
-        fe = Attr("local_id").eq(filtro_local) if fe is None else (fe & Attr("local_id").eq(filtro_local))
-    if fe is not None:
-        qargs["FilterExpression"] = fe
-
-    # 4) “Saltar” páginas previas avanzando con LEK
-    lek = None
-    for _ in range(page):
+            query_args["ExclusiveStartKey"] = lek
+        rpage = t_empleados.query(**query_args)
+        items = rpage.get("Items", [])
+        
+    else:
+        # Scan (todos los empleados de todos los locales)
+        scan_args = {}
+        
+        # Agregar filtro de role si existe
+        if filtro_role:
+            scan_args["FilterExpression"] = Attr("role").eq(filtro_role)
+        
+        # Contar total
+        count_args = scan_args.copy()
+        count_args["Select"] = "COUNT"
+        total = 0
+        lek = None
+        while True:
+            if lek:
+                count_args["ExclusiveStartKey"] = lek
+            rcount = t_empleados.scan(**count_args)
+            total += rcount.get("Count", 0)
+            lek = rcount.get("LastEvaluatedKey")
+            if not lek:
+                break
+        
+        # Calcular páginas
+        total_pages = math.ceil(total / size) if size > 0 else 0
+        
+        # Obtener items de la página solicitada
+        scan_args["Limit"] = size
+        lek = None
+        
+        # Saltar páginas previas
+        for _ in range(page):
+            if lek:
+                scan_args["ExclusiveStartKey"] = lek
+            rskip = t_empleados.scan(**scan_args)
+            lek = rskip.get("LastEvaluatedKey")
+            if not lek:
+                return _resp(200, {
+                    "contents": [],
+                    "page": page,
+                    "size": size,
+                    "totalElements": total,
+                    "totalPages": total_pages
+                })
+        
+        # Ejecutar scan para la página actual
         if lek:
-            qargs["ExclusiveStartKey"] = lek
-        rskip = t_empleados.query(**qargs)
-        lek = rskip.get("LastEvaluatedKey")
-        if not lek:
-            return _resp(200, {
-                "contents": [],
-                "page": page,
-                "size": size,
-                "totalElements": total,
-                "totalPages": total_pages
-            })
-
-    # 5) Ejecutar la página solicitada
-    if lek:
-        qargs["ExclusiveStartKey"] = lek
-    rpage = t_empleados.query(**qargs)
-    items = rpage.get("Items", [])
+            scan_args["ExclusiveStartKey"] = lek
+        rpage = t_empleados.scan(**scan_args)
+        items = rpage.get("Items", [])
 
     return _resp(200, {
         "contents": items,
         "page": page,
         "size": size,
         "totalElements": total,
-        "totalPages": total_pages
+        "totalPages": total_pages,
+        "solicitado_por": correo_aut,
+        "rol_solicitante": rol_aut
     })

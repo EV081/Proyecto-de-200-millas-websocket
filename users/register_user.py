@@ -1,9 +1,13 @@
-import os, json, re, boto3
+import os, json, re, uuid, boto3
+from datetime import datetime, timedelta
 from common import hash_password, response
 
 USERS_TABLE = os.environ["USERS_TABLE"]
+TOKENS_TABLE = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
+
 dynamodb = boto3.resource("dynamodb")
 t_users = dynamodb.Table(USERS_TABLE)
+t_tokens = dynamodb.Table(TOKENS_TABLE)
 
 ALLOWED_ROLES = {"Cliente", "Gerente", "Admin"}
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -33,7 +37,7 @@ def lambda_handler(event, context):
         if role not in ALLOWED_ROLES:
             return response(400, {"error": f"role inválido. Permitidos: {sorted(ALLOWED_ROLES)}"})
 
-        # Insertar estrictamente los 4 campos del schema
+        # Insertar usuario
         t_users.put_item(
             Item={
                 "nombre": nombre,
@@ -44,7 +48,25 @@ def lambda_handler(event, context):
             ConditionExpression="attribute_not_exists(correo)"
         )
 
-        return response(201, {"message": "Usuario registrado", "correo": correo})
+        # Generar token automáticamente
+        token = str(uuid.uuid4())
+        fecha_hora_exp = datetime.now() + timedelta(minutes=60)
+        
+        # Guardar token
+        t_tokens.put_item(Item={
+            'token': token,
+            'user_id': correo,
+            'rol': role,
+            'expires': fecha_hora_exp.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+        return response(201, {
+            "message": "Usuario registrado",
+            "correo": correo,
+            "token": token,
+            "expires": fecha_hora_exp.strftime('%Y-%m-%d %H:%M:%S'),
+            "rol": role
+        })
 
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         # Ya existe un item con ese 'correo' (PK)

@@ -18,9 +18,7 @@ empleados_table = dynamodb.Table(TABLE_EMPLEADOS_NAME)
 usuarios_table  = dynamodb.Table(TABLE_USUARIOS_NAME)
 tokens_table    = dynamodb.Table(TOKENS_TABLE_USERS)
 
-# Reglas de negocio (mantengo tus validaciones)
-TIPOS_AREA       = {"mantenimiento", "electricidad", "limpieza", "seguridad", "ti", "logistica", "otros"}
-ESTADOS_VALIDOS  = {"activo", "inactivo"}
+# Reglas de negocio
 ROLES_PUEDEN_EDITAR = {"Admin", "Gerente"}  # <-- solo estos pueden modificar empleados
 
 # ---------- Helpers ----------
@@ -63,15 +61,19 @@ def lambda_handler(event, context):
     if rol_aut not in ROLES_PUEDEN_EDITAR:
         return _resp(403, {"message": "No tienes permiso para modificar empleados"})
 
-    # 4) Parse body y validar empleado_id (PK de tu tabla actual)
+    # 4) Parse body y validar las claves compuestas (local_id y dni)
     body = _parse_body(event)
-    empleado_id = body.get("empleado_id")
-    if not empleado_id:
-        return _resp(400, {"message": "empleado_id es obligatorio"})
+    local_id = body.get("local_id")
+    dni = body.get("dni")
+    
+    if not local_id:
+        return _resp(400, {"message": "local_id es obligatorio"})
+    if not dni:
+        return _resp(400, {"message": "dni es obligatorio"})
 
-    # 5) Obtener empleado
+    # 5) Obtener empleado usando la clave compuesta
     try:
-        resp = empleados_table.get_item(Key={"empleado_id": empleado_id})
+        resp = empleados_table.get_item(Key={"local_id": local_id, "dni": dni})
     except ClientError as e:
         return _resp(500, {"message": f"Error al obtener empleado: {str(e)}"})
 
@@ -81,30 +83,22 @@ def lambda_handler(event, context):
     empleado = resp["Item"]
     hubo_cambios = False
 
-    # 6) Aplicar cambios permitidos (manteniendo tus validaciones)
+    # 6) Aplicar cambios permitidos según el schema
     if "nombre" in body and body["nombre"]:
         empleado["nombre"] = body["nombre"]
         hubo_cambios = True
 
-    if "tipo_area" in body:
-        tipo_area = body["tipo_area"]
-        if tipo_area not in TIPOS_AREA:
-            return _resp(400, {"message": "tipo_area inválido"})
-        empleado["tipo_area"] = tipo_area
+    if "apellido" in body and body["apellido"]:
+        empleado["apellido"] = body["apellido"]
         hubo_cambios = True
 
-    if "estado" in body:
-        estado = body["estado"]
-        if estado not in ESTADOS_VALIDOS:
-            return _resp(400, {"message": "estado inválido"})
-        empleado["estado"] = estado
-        hubo_cambios = True
-
-    if "contacto" in body:
-        contacto = body["contacto"]
-        if contacto is not None and not isinstance(contacto, dict):
-            return _resp(400, {"message": "contacto debe ser un objeto"})
-        empleado["contacto"] = contacto or {}
+    if "role" in body:
+        role = body["role"]
+        # Validar que el role sea uno de los permitidos
+        roles_validos = {"Repartidor", "Cocinero", "Despachador"}
+        if role not in roles_validos:
+            return _resp(400, {"message": f"role inválido. Debe ser uno de: {', '.join(roles_validos)}"})
+        empleado["role"] = role
         hubo_cambios = True
 
     if not hubo_cambios:

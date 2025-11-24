@@ -41,7 +41,7 @@ def _parse_body(event):
     return body
 
 def _validate_payload(p):
-    required = ["local_id","direccion","costo","estado"]
+    required = ["local_id","direccion","costo"]
     missing = [k for k in required if k not in p]
     if missing:
         return False, f"Faltan campos requeridos: {', '.join(missing)}"
@@ -52,10 +52,6 @@ def _validate_payload(p):
         return False, "dirección debe ser string"
     if not (isinstance(p["costo"], int) or isinstance(p["costo"], float)) or p["costo"] < 0:
         return False, "costo debe ser number >= 0"
-
-    enum_estados = {"procesando","cocinando","empacando","enviando","recibido"}
-    if p["estado"] not in enum_estados:
-        return False, f"estado inválido. Debe ser uno de: {', '.join(sorted(enum_estados))}"
 
     if "productos" not in p or p["productos"] is None:
         return False, "productos es requerido y debe ser un array con al menos un item"
@@ -146,7 +142,7 @@ def lambda_handler(event, context):
         "productos": body["productos"],                         # Ahora usa producto_id
         "costo": Decimal(str(body["costo"])),
         "direccion": body["direccion"],
-        "estado": body["estado"],
+        "estado": "procesando",                                  # Estado inicial por defecto
         "created_at": now_iso                                    # Nuevo campo requerido
     }
 
