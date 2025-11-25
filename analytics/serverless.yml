@@ -1,0 +1,132 @@
+service: service-analytics
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 300
+  iam:
+    role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+  environment:
+    TABLE_PEDIDOS: ${env:TABLE_PEDIDOS}
+    TABLE_HISTORIAL_ESTADOS: ${env:TABLE_HISTORIAL_ESTADOS}
+    ANALYTICS_BUCKET: bucket-analytic-${env:AWS_ACCOUNT_ID}
+    GLUE_DATABASE: millas_analytics_db
+    ATHENA_OUTPUT_BUCKET: athena-results-${env:AWS_ACCOUNT_ID}
+
+functions:
+  # Función para exportar datos de DynamoDB a S3
+  ExportDynamoDBToS3:
+    handler: export_to_s3.lambda_handler
+    events:
+      - schedule:
+          rate: cron(0 2 * * ? *)  # Ejecutar diariamente a las 2 AM
+          enabled: false  # Deshabilitado por defecto, se ejecuta manualmente
+    timeout: 900  # 15 minutos
+
+  # Query 1: Total de pedidos por local
+  TotalPedidosPorLocal:
+    handler: query_pedidos_por_local.lambda_handler
+    events:
+      - httpApi:
+          method: GET
+          path: /analytics/pedidos-por-local
+
+  # Query 2: Ganancias totales por local
+  GananciasPorLocal:
+    handler: query_ganancias_por_local.lambda_handler
+    events:
+      - httpApi:
+          method: GET
+          path: /analytics/ganancias-por-local
+
+  # Query 3: Tiempo total de pedido (procesado -> recibido)
+  TiempoPedido:
+    handler: query_tiempo_pedido.lambda_handler
+    events:
+      - httpApi:
+          method: GET
+          path: /analytics/tiempo-pedido
+
+  # Query 4: Promedio de pedidos por estado
+  PromedioPedidosPorEstado:
+    handler: query_promedio_por_estado.lambda_handler
+    events:
+      - httpApi:
+          method: GET
+          path: /analytics/promedio-por-estado
+
+resources:
+  Resources:
+    # Bucket para analytics
+    AnalyticsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: bucket-analytic-${env:AWS_ACCOUNT_ID}
+        VersioningConfiguration:
+          Status: Enabled
+
+    # Bucket para resultados de Athena
+    AthenaResultsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: athena-results-${env:AWS_ACCOUNT_ID}
+
+    # Glue Database
+    GlueDatabase:
+      Type: AWS::Glue::Database
+      Properties:
+        CatalogId: !Ref AWS::AccountId
+        DatabaseInput:
+          Name: millas_analytics_db
+          Description: Database para analytics de 200 Millas
+
+    # Glue Crawler para Pedidos
+    GlueCrawlerPedidos:
+      Type: AWS::Glue::Crawler
+      Properties:
+        Name: millas-pedidos-crawler
+        Role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+        DatabaseName: !Ref GlueDatabase
+        Targets:
+          S3Targets:
+            - Path: s3://bucket-analytic-${env:AWS_ACCOUNT_ID}/pedidos/
+        SchemaChangePolicy:
+          UpdateBehavior: UPDATE_IN_DATABASE
+          DeleteBehavior: LOG
+
+    # Glue Crawler para Historial Estados
+    GlueCrawlerHistorial:
+      Type: AWS::Glue::Crawler
+      Properties:
+        Name: millas-historial-crawler
+        Role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+        DatabaseName: !Ref GlueDatabase
+        Targets:
+          S3Targets:
+            - Path: s3://bucket-analytic-${env:AWS_ACCOUNT_ID}/historial_estados/
+        SchemaChangePolicy:
+          UpdateBehavior: UPDATE_IN_DATABASE
+          DeleteBehavior: LOG
+
+    # Athena Workgroup
+    AthenaWorkgroup:
+      Type: AWS::Athena::WorkGroup
+      Properties:
+        Name: millas-analytics-workgroup
+        State: ENABLED
+        WorkGroupConfiguration:
+          ResultConfiguration:
+            OutputLocation: s3://athena-results-${env:AWS_ACCOUNT_ID}/
+          EnforceWorkGroupConfiguration: true
+          PublishCloudWatchMetricsEnabled: true
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    slim: true
