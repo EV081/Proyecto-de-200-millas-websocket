@@ -7,14 +7,14 @@ from common import response
 from auth_helper import get_bearer_token, validate_token_via_lambda
 
 # === Entorno ===
-EMPLOYEE_TABLE             = os.environ.get("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
+TABLE_EMPLEADOS             = os.environ.get("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
 USERS_TABLE                = os.environ.get("USERS_TABLE", "USERS_TABLE")
 TOKENS_TABLE_USERS         = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
 # === AWS ===
 dynamodb     = boto3.resource("dynamodb")
 
-t_employee = dynamodb.Table(EMPLOYEE_TABLE)
+t_employee = dynamodb.Table(TABLE_EMPLEADOS)
 t_users    = dynamodb.Table(USERS_TABLE)
 t_tokens   = dynamodb.Table(TOKENS_TABLE_USERS)
 
