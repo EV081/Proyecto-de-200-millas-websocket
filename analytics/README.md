@@ -136,12 +136,64 @@ bash setup_analytics.sh
 
 ## Uso
 
-### 1. Exportar Datos Manualmente
+### 1. Exportar Datos
+
+#### Opción A: Mediante API (Recomendado)
+```bash
+# Usando curl
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/export
+
+# Usando Postman
+POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/export
+```
+
+**Respuesta:**
+```json
+{
+  "message": "Exportación completada exitosamente",
+  "timestamp": "2024-11-23T10:30:00",
+  "duration_seconds": 12.5,
+  "exports": {
+    "pedidos": {
+      "s3_key": "pedidos/data_20241123_103000.json",
+      "total_items": 150,
+      "crawler_started": true
+    },
+    "historial_estados": {
+      "s3_key": "historial_estados/data_20241123_103000.json",
+      "total_items": 450,
+      "crawler_started": true
+    }
+  },
+  "next_steps": [
+    "Los crawlers están procesando los datos (1-2 minutos)",
+    "Las tablas estarán disponibles en Glue Database: millas_analytics_db",
+    "Puedes consultar los endpoints de analytics después"
+  ]
+}
+```
+
+#### Opción B: Mediante AWS CLI
 ```bash
 aws lambda invoke \
   --function-name service-analytics-dev-ExportDynamoDBToS3 \
   --region us-east-1 \
   /tmp/response.json
+
+cat /tmp/response.json
+```
+
+#### Opción C: Automática (Programada)
+Para habilitar la exportación automática diaria a las 2 AM:
+
+1. Editar `analytics/serverless.yml`
+2. Cambiar `enabled: false` a `enabled: true` en el schedule
+3. Redesplegar: `cd analytics && serverless deploy`
+
+```yaml
+- schedule:
+    rate: cron(0 2 * * ? *)
+    enabled: true  # ← Cambiar a true
 ```
 
 ### 2. Ejecutar Crawlers Manualmente
