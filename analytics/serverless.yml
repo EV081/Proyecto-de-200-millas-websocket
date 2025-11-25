@@ -21,9 +21,14 @@ functions:
   ExportDynamoDBToS3:
     handler: export_to_s3.lambda_handler
     events:
+      # Endpoint HTTP para ejecución manual
+      - httpApi:
+          method: POST
+          path: /analytics/export
+      # Programación automática (deshabilitada por defecto)
       - schedule:
           rate: cron(0 2 * * ? *)  # Ejecutar diariamente a las 2 AM
-          enabled: false  # Deshabilitado por defecto, se ejecuta manualmente
+          enabled: false  # Cambiar a true para habilitar ejecución automática
     timeout: 900  # 15 minutos
 
   # Query 1: Total de pedidos por local
