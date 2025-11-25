@@ -7,7 +7,7 @@ from common import response
 from auth_helper import get_bearer_token, validate_token_via_lambda
 
 # === Entorno ===
-EMPLOYEE_TABLE             = os.environ.get("EMPLOYEE_TABLE", "EMPLOYEE_TABLE")
+EMPLOYEE_TABLE             = os.environ.get("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
 USERS_TABLE                = os.environ.get("USERS_TABLE", "USERS_TABLE")
 TOKENS_TABLE_USERS         = os.environ.get("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
