@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 from auth_helper import get_bearer_token, validate_token_via_lambda
 
 # === ENV ===
-TABLE_EMPLEADOS_NAME      = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
+TABLE_EMPLEADOS      = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
 TABLE_USUARIOS_NAME       = os.getenv("USERS_TABLE", "USERS_TABLE")
 TOKENS_TABLE_USERS        = os.getenv("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 
@@ -14,7 +14,7 @@ CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 # === AWS ===
 dynamodb   = boto3.resource("dynamodb")
 
-empleados_table = dynamodb.Table(TABLE_EMPLEADOS_NAME)
+empleados_table = dynamodb.Table(TABLE_EMPLEADOS)
 usuarios_table  = dynamodb.Table(TABLE_USUARIOS_NAME)
 tokens_table    = dynamodb.Table(TOKENS_TABLE_USERS)
 

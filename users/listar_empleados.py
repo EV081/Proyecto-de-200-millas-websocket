@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key, Attr
 from auth_helper import get_bearer_token, validate_token_via_lambda
 
-TABLE_EMPLEADOS           = os.getenv("TABLE_EMPLEADOS", "TABLE_EMPLEADOS")
+TABLE_EMPLEADOS           = os.getenv("TABLE_EMPLEADOS")
 TABLE_USUARIOS            = os.getenv("TABLE_USUARIOS", "TABLE_USUARIOS")
 TOKENS_TABLE_USERS        = os.getenv("TOKENS_TABLE_USERS", "TOKENS_TABLE_USERS")
 

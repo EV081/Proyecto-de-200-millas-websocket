@@ -177,6 +177,17 @@ deploy_services() {
   echo -e "${YELLOW}📦 Desplegando servicios principales...${NC}"
   sls deploy
   
+  # Desplegar servicio de analytics
+  if [[ -d "analytics" ]]; then
+    echo -e "${YELLOW}📊 Desplegando servicio de analytics...${NC}"
+    pushd analytics > /dev/null
+    bash setup_analytics.sh
+    popd > /dev/null
+    echo -e "${GREEN}✅ Servicio de analytics desplegado${NC}"
+  else
+    echo -e "${YELLOW}ℹ️  No se encontró directorio analytics, saltando...${NC}"
+  fi
+  
   echo -e "${GREEN}✅ Todos los microservicios desplegados${NC}"
 }
 

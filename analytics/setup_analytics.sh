@@ -1,0 +1,99 @@
+#!/bin/bash
+
+echo "=========================================="
+echo "🔧 Setup Analytics - 200 Millas"
+echo "=========================================="
+
+# Cargar variables de entorno
+if [ -f ../.env ]; then
+    export $(cat ../.env | grep -v '^#' | xargs)
+    echo "✅ Variables de entorno cargadas"
+else
+    echo "❌ Archivo .env no encontrado"
+    exit 1
+fi
+
+# Desplegar servicio de analytics
+echo ""
+echo "📦 Desplegando servicio de analytics..."
+serverless deploy
+
+if [ $? -ne 0 ]; then
+    echo "❌ Error al desplegar analytics"
+    exit 1
+fi
+
+echo "✅ Servicio de analytics desplegado"
+
+# Ejecutar exportación inicial de datos
+echo ""
+echo "📤 Ejecutando exportación inicial de datos..."
+aws lambda invoke \
+    --function-name service-analytics-dev-ExportDynamoDBToS3 \
+    --region us-east-1 \
+    /tmp/export-response.json
+
+if [ $? -eq 0 ]; then
+    echo "✅ Exportación completada"
+    cat /tmp/export-response.json
+else
+    echo "⚠️  Error en la exportación (puede ser normal si las tablas están vacías)"
+fi
+
+# Ejecutar Glue Crawlers
+echo ""
+echo "🕷️  Ejecutando Glue Crawlers..."
+
+echo "  - Crawler de Pedidos..."
+aws glue start-crawler --name millas-pedidos-crawler --region us-east-1 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "    ✅ Crawler de pedidos iniciado"
+else
+    echo "    ⚠️  Crawler de pedidos ya está ejecutándose o no existe"
+fi
+
+echo "  - Crawler de Historial..."
+aws glue start-crawler --name millas-historial-crawler --region us-east-1 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "    ✅ Crawler de historial iniciado"
+else
+    echo "    ⚠️  Crawler de historial ya está ejecutándose o no existe"
+fi
+
+echo ""
+echo "⏳ Esperando a que los crawlers terminen (esto puede tomar 1-2 minutos)..."
+sleep 60
+
+# Verificar estado de los crawlers
+echo ""
+echo "📊 Verificando estado de los crawlers..."
+
+PEDIDOS_STATE=$(aws glue get-crawler --name millas-pedidos-crawler --region us-east-1 --query 'Crawler.State' --output text 2>/dev/null)
+HISTORIAL_STATE=$(aws glue get-crawler --name millas-historial-crawler --region us-east-1 --query 'Crawler.State' --output text 2>/dev/null)
+
+echo "  - Pedidos: $PEDIDOS_STATE"
+echo "  - Historial: $HISTORIAL_STATE"
+
+# Mostrar información de las tablas creadas
+echo ""
+echo "📋 Tablas en Glue Database:"
+aws glue get-tables --database-name millas_analytics_db --region us-east-1 --query 'TableList[*].Name' --output table 2>/dev/null
+
+echo ""
+echo "=========================================="
+echo "✅ Setup de Analytics completado"
+echo "=========================================="
+echo ""
+echo "📍 Endpoints disponibles:"
+echo "  - GET /analytics/pedidos-por-local"
+echo "  - GET /analytics/ganancias-por-local"
+echo "  - GET /analytics/tiempo-pedido"
+echo "  - GET /analytics/promedio-por-estado"
+echo ""
+echo "💡 Para ejecutar manualmente la exportación:"
+echo "   aws lambda invoke --function-name service-analytics-dev-ExportDynamoDBToS3 /tmp/response.json"
+echo ""
+echo "💡 Para ejecutar los crawlers manualmente:"
+echo "   aws glue start-crawler --name millas-pedidos-crawler"
+echo "   aws glue start-crawler --name millas-historial-crawler"
+echo ""

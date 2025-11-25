@@ -10,7 +10,7 @@ provider:
     role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
   environment:
     STATE_MACHINE_ARN: arn:aws:states:us-east-1:${env:AWS_ACCOUNT_ID}:stateMachine:DoscientasMillas
-    TABLE_HISTORIAL_ESTADOS: t_historial_estados
+    TABLE_HISTORIAL_ESTADOS: ${env:TABLE_HISTORIAL_ESTADOS}
     TABLE_PRODUCTOS: ${env:TABLE_PRODUCTOS}
     QUEUE_COCINA_URL: !Ref ColaCocina
     QUEUE_DELIVERY_URL: !Ref ColaDelivery

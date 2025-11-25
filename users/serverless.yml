@@ -10,7 +10,7 @@ provider:
     role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
   environment:
     USERS_TABLE: ${env:TABLE_USUARIOS}
-    EMPLOYEE_TABLE: ${env:TABLE_EMPLEADOS}
+    TABLE_EMPLEADOS: ${env:TABLE_EMPLEADOS}
     TOKENS_TABLE_USERS: ${env:TABLE_TOKENS_USUARIOS}
     VALIDAR_TOKEN_LAMBDA_NAME: ${env:VALIDAR_TOKEN_LAMBDA_NAME}
   httpApi:
