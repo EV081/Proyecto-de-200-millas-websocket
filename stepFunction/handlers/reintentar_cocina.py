@@ -33,7 +33,8 @@ def handler(event, context):
     timestamp = datetime.utcnow().isoformat()
     
     item = {
-        'id_pedido': order_id,
+        'pedido_id': order_id,
+        'estado_id': timestamp,
         'createdAt': timestamp,
         'estado': 'procesando',
         'hora_inicio': timestamp,

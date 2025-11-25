@@ -37,7 +37,7 @@ def handler(event, context):
     
     # Query all history for this order
     response = table.query(
-        KeyConditionExpression=Key('id_pedido').eq(order_id),
+        KeyConditionExpression=Key('pedido_id').eq(order_id),
         ScanIndexForward=False, # Descending order (newest first)
         Limit=1
     )

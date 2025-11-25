@@ -17,16 +17,17 @@ def handler(event, context):
     empleado_id = input_data.get('empleado_id', 'SYSTEM')
     
     # Update previous state's hora_fin
+    # Update previous state's hora_fin
     table = dynamodb.Table(TABLE_HISTORIAL_ESTADOS)
     response = table.query(
-        KeyConditionExpression=Key('id_pedido').eq(order_id),
+        KeyConditionExpression=Key('pedido_id').eq(order_id),
         ScanIndexForward=False,
         Limit=1
     )
     if response.get('Items'):
         prev_item = response['Items'][0]
         table.update_item(
-            Key={'id_pedido': order_id, 'createdAt': prev_item['createdAt']},
+            Key={'pedido_id': order_id, 'estado_id': prev_item['estado_id']},
             UpdateExpression='SET hora_fin = :hf',
             ExpressionAttributeValues={':hf': datetime.utcnow().isoformat()}
         )
@@ -34,7 +35,8 @@ def handler(event, context):
     # Save final state
     timestamp = datetime.utcnow().isoformat()
     item = {
-        'id_pedido': order_id,
+        'pedido_id': order_id,
+        'estado_id': timestamp,
         'createdAt': timestamp,
         'estado': 'recibido',
         'hora_inicio': timestamp,
