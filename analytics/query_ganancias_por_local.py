@@ -11,7 +11,7 @@ athena_client = boto3.client('athena')
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "GET,OPTIONS"
+    "Access-Control-Allow-Methods": "POST,OPTIONS"
 }
 
 def execute_athena_query(query):
@@ -23,8 +23,9 @@ def execute_athena_query(query):
             'Database': GLUE_DATABASE
         },
         ResultConfiguration={
-            'OutputLocation': f's3://{ATHENA_OUTPUT_BUCKET}/'
-        }
+            'OutputLocation': f's3://{ATHENA_OUTPUT_BUCKET}/results/'
+        },
+        WorkGroup='millas-analytics-workgroup'
     )
     
     query_execution_id = response['QueryExecutionId']
@@ -84,21 +85,42 @@ def parse_results(results):
 def lambda_handler(event, context):
     """
     Query: Ganancias totales por local
+    Body: { "local_id": "LOCAL-001" } (opcional)
     """
     try:
-        # Query SQL
-        query = """
-        SELECT 
-            local_id,
-            COUNT(*) as total_pedidos,
-            SUM(costo) as ganancias_totales,
-            AVG(costo) as ganancia_promedio
-        FROM pedidos
-        GROUP BY local_id
-        ORDER BY ganancias_totales DESC
-        """
+        # Parsear body
+        body = {}
+        if event.get('body'):
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
         
-        print("Ejecutando query: Ganancias totales por local")
+        local_id = body.get('local_id')
+        
+        # Query SQL con filtro opcional
+        if local_id:
+            query = f"""
+            SELECT 
+                local_id,
+                COUNT(*) as total_pedidos,
+                SUM(costo) as ganancias_totales,
+                AVG(costo) as ganancia_promedio
+            FROM pedidos
+            WHERE local_id = '{local_id}'
+            GROUP BY local_id
+            """
+            print(f"Ejecutando query: Ganancias para local {local_id}")
+        else:
+            query = """
+            SELECT 
+                local_id,
+                COUNT(*) as total_pedidos,
+                SUM(costo) as ganancias_totales,
+                AVG(costo) as ganancia_promedio
+            FROM pedidos
+            GROUP BY local_id
+            ORDER BY ganancias_totales DESC
+            """
+            print("Ejecutando query: Ganancias totales por local (todos)")
+        
         results = execute_athena_query(query)
         
         data = parse_results(results)
@@ -108,6 +130,7 @@ def lambda_handler(event, context):
             'headers': CORS_HEADERS,
             'body': json.dumps({
                 'query': 'Ganancias totales por local',
+                'local_id': local_id if local_id else 'todos',
                 'data': data
             }, ensure_ascii=False)
         }

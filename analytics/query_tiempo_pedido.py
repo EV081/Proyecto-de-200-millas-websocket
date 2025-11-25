@@ -11,7 +11,7 @@ athena_client = boto3.client('athena')
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "GET,OPTIONS"
+    "Access-Control-Allow-Methods": "POST,OPTIONS"
 }
 
 def execute_athena_query(query):
@@ -23,8 +23,9 @@ def execute_athena_query(query):
             'Database': GLUE_DATABASE
         },
         ResultConfiguration={
-            'OutputLocation': f's3://{ATHENA_OUTPUT_BUCKET}/'
-        }
+            'OutputLocation': f's3://{ATHENA_OUTPUT_BUCKET}/results/'
+        },
+        WorkGroup='millas-analytics-workgroup'
     )
     
     query_execution_id = response['QueryExecutionId']
@@ -83,48 +84,106 @@ def parse_results(results):
 
 def lambda_handler(event, context):
     """
-    Query: Tiempo total de pedido desde procesado hasta recibido
+    Query: Tiempo total de pedido desde procesado hasta recibido, agrupado por local
+    Body: { "local_id": "LOCAL-001" } (opcional)
     """
     try:
-        # Query SQL que calcula el tiempo entre el primer estado (procesado) y el último (recibido)
-        query = """
-        WITH estados_ordenados AS (
-            SELECT 
-                pedido_id,
-                estado,
-                timestamp,
-                ROW_NUMBER() OVER (PARTITION BY pedido_id ORDER BY timestamp ASC) as rn_first,
-                ROW_NUMBER() OVER (PARTITION BY pedido_id ORDER BY timestamp DESC) as rn_last
-            FROM historial_estados
-        ),
-        primer_estado AS (
-            SELECT pedido_id, timestamp as inicio
-            FROM estados_ordenados
-            WHERE rn_first = 1 AND estado = 'procesando'
-        ),
-        ultimo_estado AS (
-            SELECT pedido_id, timestamp as fin
-            FROM estados_ordenados
-            WHERE rn_last = 1 AND estado = 'recibido'
-        )
-        SELECT 
-            p.pedido_id,
-            p.inicio,
-            u.fin,
-            date_diff('minute', 
-                from_iso8601_timestamp(p.inicio), 
-                from_iso8601_timestamp(u.fin)
-            ) as tiempo_total_minutos,
-            date_diff('hour', 
-                from_iso8601_timestamp(p.inicio), 
-                from_iso8601_timestamp(u.fin)
-            ) as tiempo_total_horas
-        FROM primer_estado p
-        INNER JOIN ultimo_estado u ON p.pedido_id = u.pedido_id
-        ORDER BY tiempo_total_minutos DESC
-        """
+        # Parsear body
+        body = {}
+        if event.get('body'):
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
         
-        print("Ejecutando query: Tiempo total de pedido")
+        local_id = body.get('local_id')
+        
+        # Query SQL que calcula el tiempo entre el primer estado (procesado) y el último (recibido)
+        if local_id:
+            query = f"""
+            WITH estados_ordenados AS (
+                SELECT 
+                    h.pedido_id,
+                    h.estado,
+                    h.hora_inicio,
+                    h.hora_fin,
+                    ROW_NUMBER() OVER (PARTITION BY h.pedido_id ORDER BY h.hora_inicio ASC) as rn_first,
+                    ROW_NUMBER() OVER (PARTITION BY h.pedido_id ORDER BY h.hora_fin DESC) as rn_last
+                FROM historial_estados h
+                INNER JOIN pedidos ped ON h.pedido_id = ped.pedido_id
+                WHERE ped.local_id = '{local_id}'
+            ),
+            primer_estado AS (
+                SELECT pedido_id, hora_inicio as inicio
+                FROM estados_ordenados
+                WHERE rn_first = 1 AND estado = 'procesando'
+            ),
+            ultimo_estado AS (
+                SELECT pedido_id, hora_fin as fin
+                FROM estados_ordenados
+                WHERE rn_last = 1 AND estado = 'recibido'
+            )
+            SELECT 
+                '{local_id}' as local_id,
+                p.pedido_id,
+                p.inicio,
+                u.fin,
+                date_diff('minute', 
+                    from_iso8601_timestamp(p.inicio), 
+                    from_iso8601_timestamp(u.fin)
+                ) as tiempo_total_minutos,
+                date_diff('hour', 
+                    from_iso8601_timestamp(p.inicio), 
+                    from_iso8601_timestamp(u.fin)
+                ) as tiempo_total_horas
+            FROM primer_estado p
+            INNER JOIN ultimo_estado u ON p.pedido_id = u.pedido_id
+            ORDER BY tiempo_total_minutos DESC
+            """
+            print(f"Ejecutando query: Tiempo total de pedido para local {local_id}")
+        else:
+            query = """
+            WITH estados_ordenados AS (
+                SELECT 
+                    h.pedido_id,
+                    h.estado,
+                    h.hora_inicio,
+                    h.hora_fin,
+                    ped.local_id,
+                    ROW_NUMBER() OVER (PARTITION BY h.pedido_id ORDER BY h.hora_inicio ASC) as rn_first,
+                    ROW_NUMBER() OVER (PARTITION BY h.pedido_id ORDER BY h.hora_fin DESC) as rn_last
+                FROM historial_estados h
+                INNER JOIN pedidos ped ON h.pedido_id = ped.pedido_id
+            ),
+            primer_estado AS (
+                SELECT pedido_id, local_id, hora_inicio as inicio
+                FROM estados_ordenados
+                WHERE rn_first = 1 AND estado = 'procesando'
+            ),
+            ultimo_estado AS (
+                SELECT pedido_id, hora_fin as fin
+                FROM estados_ordenados
+                WHERE rn_last = 1 AND estado = 'recibido'
+            )
+            SELECT 
+                p.local_id,
+                COUNT(DISTINCT p.pedido_id) as total_pedidos,
+                AVG(date_diff('minute', 
+                    from_iso8601_timestamp(p.inicio), 
+                    from_iso8601_timestamp(u.fin)
+                )) as tiempo_promedio_minutos,
+                MIN(date_diff('minute', 
+                    from_iso8601_timestamp(p.inicio), 
+                    from_iso8601_timestamp(u.fin)
+                )) as tiempo_minimo_minutos,
+                MAX(date_diff('minute', 
+                    from_iso8601_timestamp(p.inicio), 
+                    from_iso8601_timestamp(u.fin)
+                )) as tiempo_maximo_minutos
+            FROM primer_estado p
+            INNER JOIN ultimo_estado u ON p.pedido_id = u.pedido_id
+            GROUP BY p.local_id
+            ORDER BY tiempo_promedio_minutos DESC
+            """
+            print("Ejecutando query: Tiempo total de pedido por local (todos)")
+        
         results = execute_athena_query(query)
         
         data = parse_results(results)
@@ -133,7 +192,8 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'headers': CORS_HEADERS,
             'body': json.dumps({
-                'query': 'Tiempo total de pedido (procesado -> recibido)',
+                'query': 'Tiempo total de pedido (procesado -> recibido) por local',
+                'local_id': local_id if local_id else 'todos',
                 'data': data
             }, ensure_ascii=False)
         }

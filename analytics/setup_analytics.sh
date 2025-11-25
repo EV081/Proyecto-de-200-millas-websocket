@@ -25,6 +25,11 @@ fi
 
 echo "✅ Servicio de analytics desplegado"
 
+# Configurar Athena
+echo ""
+echo "⚙️  Configurando Athena..."
+bash configure_athena.sh
+
 # Ejecutar exportación inicial de datos
 echo ""
 echo "📤 Ejecutando exportación inicial de datos..."

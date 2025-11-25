@@ -213,18 +213,47 @@ aws glue get-tables \
 ```
 
 ### 4. Consultar Endpoints
+
+**Todos los endpoints ahora son POST y aceptan `local_id` opcional en el body:**
+
 ```bash
-# Total de pedidos por local
-curl https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/pedidos-por-local
+# Total de pedidos por local (todos los locales)
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/pedidos-por-local
 
-# Ganancias por local
-curl https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/ganancias-por-local
+# Total de pedidos para un local específico
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/pedidos-por-local \
+  -H "Content-Type: application/json" \
+  -d '{"local_id": "LOCAL-001"}'
 
-# Tiempo de pedido
-curl https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/tiempo-pedido
+# Ganancias por local (todos)
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/ganancias-por-local \
+  -H "Content-Type: application/json" \
+  -d '{}'
 
-# Promedio por estado
-curl https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/promedio-por-estado
+# Ganancias para un local específico
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/ganancias-por-local \
+  -H "Content-Type: application/json" \
+  -d '{"local_id": "LOCAL-001"}'
+
+# Tiempo de pedido por local (agregado por local)
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/tiempo-pedido \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Tiempo de pedido para un local específico (detalle por pedido)
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/tiempo-pedido \
+  -H "Content-Type: application/json" \
+  -d '{"local_id": "LOCAL-001"}'
+
+# Promedio por estado (todos)
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/promedio-por-estado \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Promedio por estado para un local específico
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/analytics/promedio-por-estado \
+  -H "Content-Type: application/json" \
+  -d '{"local_id": "LOCAL-001"}'
 ```
 
 ## Estructura de Archivos

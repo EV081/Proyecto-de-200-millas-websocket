@@ -11,7 +11,7 @@ athena_client = boto3.client('athena')
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "GET,OPTIONS"
+    "Access-Control-Allow-Methods": "POST,OPTIONS"
 }
 
 def execute_athena_query(query):
@@ -23,8 +23,9 @@ def execute_athena_query(query):
             'Database': GLUE_DATABASE
         },
         ResultConfiguration={
-            'OutputLocation': f's3://{ATHENA_OUTPUT_BUCKET}/'
-        }
+            'OutputLocation': f's3://{ATHENA_OUTPUT_BUCKET}/results/'
+        },
+        WorkGroup='millas-analytics-workgroup'
     )
     
     query_execution_id = response['QueryExecutionId']
@@ -84,42 +85,71 @@ def parse_results(results):
 def lambda_handler(event, context):
     """
     Query: Promedio de tiempo que los pedidos pasan en cada estado
+    Body: { "local_id": "LOCAL-001" } (opcional)
     """
     try:
-        # Query SQL que calcula el tiempo promedio en cada estado
-        query = """
-        WITH tiempos_por_estado AS (
-            SELECT 
-                pedido_id,
-                estado,
-                timestamp as inicio,
-                LEAD(timestamp) OVER (PARTITION BY pedido_id ORDER BY timestamp) as fin
-            FROM historial_estados
-        ),
-        duraciones AS (
-            SELECT 
-                estado,
-                pedido_id,
-                date_diff('minute', 
-                    from_iso8601_timestamp(inicio), 
-                    from_iso8601_timestamp(fin)
-                ) as duracion_minutos
-            FROM tiempos_por_estado
-            WHERE fin IS NOT NULL
-        )
-        SELECT 
-            estado,
-            COUNT(DISTINCT pedido_id) as total_pedidos,
-            AVG(duracion_minutos) as tiempo_promedio_minutos,
-            MIN(duracion_minutos) as tiempo_minimo_minutos,
-            MAX(duracion_minutos) as tiempo_maximo_minutos,
-            STDDEV(duracion_minutos) as desviacion_estandar
-        FROM duraciones
-        GROUP BY estado
-        ORDER BY tiempo_promedio_minutos DESC
-        """
+        # Parsear body
+        body = {}
+        if event.get('body'):
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
         
-        print("Ejecutando query: Promedio de pedidos por estado")
+        local_id = body.get('local_id')
+        
+        # Query SQL que calcula el tiempo promedio en cada estado
+        if local_id:
+            query = f"""
+            WITH duraciones AS (
+                SELECT 
+                    h.estado,
+                    h.pedido_id,
+                    date_diff('minute', 
+                        from_iso8601_timestamp(h.hora_inicio), 
+                        from_iso8601_timestamp(h.hora_fin)
+                    ) as duracion_minutos
+                FROM historial_estados h
+                INNER JOIN pedidos p ON h.pedido_id = p.pedido_id
+                WHERE h.hora_inicio IS NOT NULL 
+                  AND h.hora_fin IS NOT NULL
+                  AND p.local_id = '{local_id}'
+            )
+            SELECT 
+                estado,
+                COUNT(DISTINCT pedido_id) as total_pedidos,
+                AVG(duracion_minutos) as tiempo_promedio_minutos,
+                MIN(duracion_minutos) as tiempo_minimo_minutos,
+                MAX(duracion_minutos) as tiempo_maximo_minutos,
+                STDDEV(duracion_minutos) as desviacion_estandar
+            FROM duraciones
+            GROUP BY estado
+            ORDER BY tiempo_promedio_minutos DESC
+            """
+            print(f"Ejecutando query: Promedio por estado para local {local_id}")
+        else:
+            query = """
+            WITH duraciones AS (
+                SELECT 
+                    estado,
+                    pedido_id,
+                    date_diff('minute', 
+                        from_iso8601_timestamp(hora_inicio), 
+                        from_iso8601_timestamp(hora_fin)
+                    ) as duracion_minutos
+                FROM historial_estados
+                WHERE hora_inicio IS NOT NULL AND hora_fin IS NOT NULL
+            )
+            SELECT 
+                estado,
+                COUNT(DISTINCT pedido_id) as total_pedidos,
+                AVG(duracion_minutos) as tiempo_promedio_minutos,
+                MIN(duracion_minutos) as tiempo_minimo_minutos,
+                MAX(duracion_minutos) as tiempo_maximo_minutos,
+                STDDEV(duracion_minutos) as desviacion_estandar
+            FROM duraciones
+            GROUP BY estado
+            ORDER BY tiempo_promedio_minutos DESC
+            """
+            print("Ejecutando query: Promedio de pedidos por estado (todos)")
+        
         results = execute_athena_query(query)
         
         data = parse_results(results)
@@ -129,6 +159,7 @@ def lambda_handler(event, context):
             'headers': CORS_HEADERS,
             'body': json.dumps({
                 'query': 'Promedio de tiempo por estado',
+                'local_id': local_id if local_id else 'todos',
                 'data': data
             }, ensure_ascii=False)
         }

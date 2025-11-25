@@ -36,7 +36,7 @@ functions:
     handler: query_pedidos_por_local.lambda_handler
     events:
       - httpApi:
-          method: GET
+          method: POST
           path: /analytics/pedidos-por-local
 
   # Query 2: Ganancias totales por local
@@ -44,7 +44,7 @@ functions:
     handler: query_ganancias_por_local.lambda_handler
     events:
       - httpApi:
-          method: GET
+          method: POST
           path: /analytics/ganancias-por-local
 
   # Query 3: Tiempo total de pedido (procesado -> recibido)
@@ -52,7 +52,7 @@ functions:
     handler: query_tiempo_pedido.lambda_handler
     events:
       - httpApi:
-          method: GET
+          method: POST
           path: /analytics/tiempo-pedido
 
   # Query 4: Promedio de pedidos por estado
@@ -60,7 +60,7 @@ functions:
     handler: query_promedio_por_estado.lambda_handler
     events:
       - httpApi:
-          method: GET
+          method: POST
           path: /analytics/promedio-por-estado
 
 resources:
@@ -124,6 +124,7 @@ resources:
         State: ENABLED
         WorkGroupConfiguration:
           ResultConfiguration:
-            OutputLocation: s3://athena-results-${env:AWS_ACCOUNT_ID}/
+            OutputLocation: s3://athena-results-${env:AWS_ACCOUNT_ID}/results/
           EnforceWorkGroupConfiguration: true
           PublishCloudWatchMetricsEnabled: true
+        Description: Workgroup para analytics de 200 Millas
