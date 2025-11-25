@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Usuarios",
+  "type": "object",
+  "x-dynamodb": {
+    "partition_key": "correo"
+  },
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "correo": {
+      "type": "string",
+      "format": "email"
+    },
+    "contrasena": {
+      "type": "string",
+      "minLength": 6
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "Cliente",
+        "Gerente",
+        "Admin"
+      ]
+    }
+  },
+  "required": [
+    "nombre",
+    "correo",
+    "contrasena",
+    "role"
+  ],
+  "additionalProperties": false
+}

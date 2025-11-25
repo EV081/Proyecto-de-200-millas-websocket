@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HistorialEstados",
+  "description": "Registro de los cambios de estado de un pedido en el tiempo",
+  "type": "object",
+  "x-dynamodb": {
+    "partition_key": "pedido_id",
+    "sort_key": "estado_id"
+  },
+  "properties": {
+    "estado_id": {
+      "type": "string",
+      "description": "Identificador único del registro de estado (por ejemplo, UUID)"
+    },
+    "pedido_id": {
+      "type": "string",
+      "description": "Identificador del pedido al que pertenece este cambio de estado"
+    },
+    "estado": {
+      "type": "string",
+      "enum": ["procesando", "cocinando", "empacando", "enviando", "recibido"],
+      "description": "Estado del pedido en este tramo de tiempo"
+    },
+    "hora_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha y hora en la que comenzó este estado (ISO 8601)"
+    },
+    "hora_fin": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha y hora en la que terminó este estado (ISO 8601)"
+    },
+    "empleado": {
+      "type": "string",
+      "description": "Identificador del empleado que se encargo del pedido"
+    }
+  },
+  "required": ["estado_id", "pedido_id", "estado", "hora_inicio", "hora_fin"],
+  "additionalProperties": false
+}

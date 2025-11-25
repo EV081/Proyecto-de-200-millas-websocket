@@ -1,0 +1,96 @@
+service: service-users
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  memorySize: 256
+  timeout: 20
+  iam:
+    role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+  environment:
+    USERS_TABLE: ${env:TABLE_USUARIOS}
+    TABLE_EMPLEADOS: ${env:TABLE_EMPLEADOS}
+    TOKENS_TABLE_USERS: ${env:TABLE_TOKENS_USUARIOS}
+    VALIDAR_TOKEN_LAMBDA_NAME: ${env:VALIDAR_TOKEN_LAMBDA_NAME}
+  httpApi:
+    cors: true
+
+functions:
+  # públicas
+  RegisterUser:
+    handler: register_user.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/register
+
+  LoginUsuario:
+    handler: login_user.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/login
+
+  # protegidas
+  CambiarContrasenaUsuario:
+    handler: cambiar_contrasena.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/password/change
+
+  EliminarUsuario:
+    handler: eliminar_usuario.lambda_handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /users/me
+
+  MiUsuario:
+    handler: mi_usuario.lambda_handler
+    events:
+      - httpApi:
+          method: GET
+          path: /users/me
+
+  ModificarUsuario:
+    handler: modificar_usuario.lambda_handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /users/me
+  
+  CrearEmpleado:
+    handler: register_empleado.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/employee
+
+  ActualizarEmpleado:
+    handler: actualizar_empleado.lambda_handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /users/employee
+  
+  EliminarEmpleado:
+    handler: eliminar_empleado.lambda_handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /users/employee
+  
+  ListarEmpleados:
+    handler: listar_empleados.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /users/employees/list
+          
+
+  # lambda authorizer (no expuesto vía HTTP)
+  ValidarUserTokenAcceso:
+    name: ValidarTokenAcceso
+    handler: validar_token_users.lambda_handler

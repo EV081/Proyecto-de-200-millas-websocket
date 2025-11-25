@@ -1,197 +1,551 @@
-# 200 Millas – Auth (Register & Login) • README corto
+# API Documentation - Proyecto 200 Millas
 
-Este README explica **solo** la parte de **usuarios**: *crear usuario* y *login*.
-(La parte de productos e imágenes queda fuera.)
-
----
-
-## Arquitectura mínima
-
-* **API Gateway (HTTP API)**
-
-  * `POST /usuarios/crear` → Lambda **CrearUsuario**
-  * `POST /usuarios/login` → Lambda **LoginUsuario**
-* **DynamoDB**
-
-  * `t_usuarios` (PK `tenant_id`, SK `user_id`)
-  * `t_tokens_acceso` (PK `token`)
-* **Lambdas (Python 3.12)** con Serverless Framework v4.
+Documentación de endpoints para desarrollo frontend.
 
 ---
 
-## Variables de entorno (definidas en `serverless.yml`)
+## 🔐 Autenticación
 
-```yaml
-USERS_TABLE=t_usuarios
-TOKENS_TABLE=t_tokens_acceso
-```
+**Endpoints públicos**: No requieren token  
+**Endpoints protegidos**: Header `Authorization: Bearer <token>`
 
 ---
 
-## Modelo de datos
+# URL
+servicio clientes -> https://96189ls6ki.execute-api.us-east-1.amazonaws.com
 
-### t_usuarios
+servicio productos -> https://j30x9cucu2.execute-api.us-east-1.amazonaws.com
 
+servicio usuarios -> https://02vk0b0dll.execute-api.us-east-1.amazonaws.com
+
+servicio empleados -> https://uou7ashhbl.execute-api.us-east-1.amazonaws.com
+
+
+---
+
+## 1. Usuarios y Autenticación
+
+### Públicos
+
+#### POST `/users/register`
+Registrar nuevo usuario
 ```json
-{
-  "tenant_id": "6200millas",          // PK
-  "user_id": "admin@6200millas.pe",   // SK (email)
-  "password_hash": "sha256...",
-  "role": "admin | customer",         // por defecto "customer"
-  "created_at": "2025-11-08T12:34:56Z"
+Request: {
+  "nombre": "string",
+  "correo": "email",
+  "contrasena": "string",
+  "role": "Cliente|Gerente|Admin"
+}
+Response: {
+  "message": "string",
+  "correo": "email"
 }
 ```
 
-### t_tokens_acceso
-
+#### POST `/users/login`
+Iniciar sesión
 ```json
-{
-  "token": "uuid",                     // PK
-  "tenant_id": "6200millas",
-  "user_id": "admin@6200millas.pe",
-  "role": "admin | customer",
-  "expires": "YYYY-MM-DD HH:MM:SS"     // UTC
+Request: {
+  "correo": "email",
+  "contrasena": "string"
+}
+Response: {
+  "token": "string",
+  "expires_iso": "ISO8601"
+}
+```
+
+### Protegidos (Requieren Token)
+
+#### GET `/users/me`
+Obtener datos del usuario autenticado
+```json
+Response: {
+  "nombre": "string",
+  "correo": "email",
+  "role": "string"
+}
+```
+
+#### PUT `/users/me`
+Actualizar datos del usuario
+```json
+Request: {
+  "nombre": "string (opcional)",
+  "contrasena": "string (opcional)"
+}
+Response: {
+  "message": "string"
+}
+```
+
+#### DELETE `/users/me`
+Eliminar cuenta del usuario
+```json
+Response: {
+  "message": "string"
+}
+```
+
+#### POST `/users/password/change`
+Cambiar contraseña
+```json
+Request: {
+  "contrasena_actual": "string",
+  "contrasena_nueva": "string"
+}
+Response: {
+  "message": "string"
 }
 ```
 
 ---
 
-## Endpoints
+## 2. Empleados
 
-### 1) Crear Usuario
+**Permisos**: Admin o Gerente
 
-* **POST** `/usuarios/crear`
-* **Body (JSON)**:
-
+#### POST `/users/employee`
+Crear empleado
 ```json
-{
-  "tenant_id": "6200millas",
-  "user_id": "admin@6200millas.pe",
-  "password": "Secreta123",
-  "role": "admin"
+Request: {
+  "local_id": "string",
+  "dni": "string",
+  "nombre": "string",
+  "apellido": "string",
+  "role": "Repartidor|Cocinero|Despachador",
+  "ocupado": boolean
+}
+Response: {
+  "message": "string",
+  "employee": {...}
 }
 ```
 
-* **Respuestas**:
-
-  * `200` → `{"message":"Usuario registrado", "tenant_id":"...", "user_id":"...", "role":"admin"}`
-  * `200` (si ya existe) → `{"message":"Usuario ya existe"}`
-  * `400` → parámetros faltantes o `role` inválido
-  * `500` → error interno
-
-> Nota: Para MVP se permite enviar `role`. En producción, **no** permitir autoasignarse `admin`.
-
----
-
-### 2) Login
-
-* **POST** `/usuarios/login`
-* **Body (JSON)**:
-
+#### PUT `/users/employee`
+Actualizar empleado
 ```json
-{
-  "tenant_id": "6200millas",
-  "user_id": "admin@6200millas.pe",
-  "password": "Secreta123"
+Request: {
+  "local_id": "string",
+  "dni": "string",
+  "nombre": "string (opcional)",
+  "apellido": "string (opcional)",
+  "role": "string (opcional)"
+}
+Response: {
+  "message": "string"
 }
 ```
 
-* **Respuestas**:
+#### DELETE `/users/employee`
+Eliminar empleado
+```json
+Request: {
+  "local_id": "string",
+  "dni": "string"
+}
+Response: {
+  "message": "string"
+}
+```
 
-  * `200` → `{"token":"<uuid>","expires":"<iso8601>","role":"admin"}`
-  * `403` → credenciales inválidas
-  * `400/500` → error de validación/servidor
-
-El `token` se guarda en `t_tokens_acceso` y se usará para autorizar otros endpoints.
-
----
-
-## Probar rápido
-
-### Postman
-
-1. **Crear usuario** con el JSON de arriba.
-2. **Login** y guarda el `token`.
-
-### cURL
-
-```bash
-# Crear usuario
-curl -X POST "$BASE/usuarios/crear" \
- -H "Content-Type: application/json" \
- -d '{"tenant_id":"6200millas","user_id":"admin@6200millas.pe","password":"Secreta123","role":"admin"}'
-
-# Login
-curl -X POST "$BASE/usuarios/login" \
- -H "Content-Type: application/json" \
- -d '{"tenant_id":"6200millas","user_id":"admin@6200millas.pe","password":"Secreta123"}'
+#### POST `/users/employees/list`
+Listar empleados de un local
+```json
+Request: {
+  "local_id": "string",
+  "limit": number (opcional),
+  "start_key": object (opcional, para paginación)
+}
+Response: {
+  "empleados": [...],
+  "count": number,
+  "last_evaluated_key": object (si hay más páginas)
+}
 ```
 
 ---
 
-## Notas de implementación
+## 3. Productos
 
-* **Passwords**: se guardan con `sha256` (campo `password_hash`).
-* **Expiración de tokens**: +60 min desde el login (UTC).
-* **Multitenancy**: `tenant_id` agrupa a los usuarios por negocio.
-* **Compatibilidad**: si un usuario antiguo no tiene `role`, `login` devuelve `"customer"` por defecto.
+**Permisos**: Todos los endpoints requieren token
 
----
-# Cambios para los estados
-Para los cambios añadidos, se le añadieron 4 funciones.
-serverless.yml  src
-:~/r_200_millas/Proyecto-de-200-millas/services/workflow (main) $ sls deploy
+#### POST `/productos/create`
+Crear producto
+```json
+Request: {
+  "local_id": "string",
+  "producto_id": "UUID",
+  "nombre": "string",
+  "precio": number,
+  "descripcion": "string",
+  "categoria": "string",
+  "cantidad": number,
+  "imagen_url": "string (opcional)"
+}
+Response: {
+  "message": "string",
+  "producto": {...}
+}
+```
 
-✔ Installed Serverless Framework v4.23.0
+#### PUT `/productos/update`
+Actualizar producto
+```json
+Request: {
+  "local_id": "string",
+  "producto_id": "UUID",
+  "nombre": "string (opcional)",
+  "precio": number (opcional)",
+  "descripcion": "string (opcional)",
+  "categoria": "string (opcional)",
+  "cantidad": number (opcional)",
+  "imagen_url": "string (opcional)"
+}
+Response: {
+  "message": "string"
+}
+```
 
-Deploying "pedidos-workflow" to stage "dev" (us-east-1)
-
-✔ Service deployed to stack pedidos-workflow-dev (93s)
-
-endpoints:
-  POST - https://49ootimq6b.execute-api.us-east-1.amazonaws.com/delivery/cocina-asignada
-  POST - https://49ootimq6b.execute-api.us-east-1.amazonaws.com/delivery/cocina-completa
-  POST - https://49ootimq6b.execute-api.us-east-1.amazonaws.com/delivery/empaquetado-completo
-  POST - https://49ootimq6b.execute-api.us-east-1.amazonaws.com/delivery/entrega-delivery
-functions:
-  CocinaAsignada: pedidos-workflow-dev-CocinaAsignada (3.6 kB)
-  CocinaCompleta: pedidos-workflow-dev-CocinaCompleta (3.6 kB)
-  EmpaquetadoCompleto: pedidos-workflow-dev-EmpaquetadoCompleto (3.6 kB)
-  EntregaDelivery: pedidos-workflow-dev-EntregaDelivery (3.6 kB)
-  AckStatus: pedidos-workflow-dev-AckStatus (3.6 kB)
-
-:~/r_200_millas/Proyecto-de-200-millas/services/workflow (main) $ curl -X POST "https://49ootimq6b.execute-api.us-east-1.amazonaws.com/delivery/cocina-asignada" \
-  -H "Content-Type: application/json" \
-  -d '{"tenant_id":"6200millas","order_id":"ORD-1001"}'
-{"message": "Evento publicado", "detail": {"tenant_id": "6200millas", "order_id": "ORD-1001", "status": "COCINA_ASIGNADA", "at": "2025-11-09T03:48:34.274268", "mensaje": "Est\u00e1 en cocina"}}:~/r_200_millas/Proyecto-de-200-millas/services/workflow (main) $ 
-
-POr ahora, solo se manda a un evnet bridge que llama a otra funciton que manda un ok 200.
-
-## Firma de la funcion
-Paso 1: Llamar a los endpoints (API Delivery)
-Llamada para "Cocina Asignada"
-
-Usa el siguiente comando cURL para hacer la llamada a la API:
-
-curl -X POST "https://49ootimq6b.execute-api.us-east-1.amazonaws.com/delivery/cocina-asignada" \
-  -H "Content-Type: application/json" \
-  -d '{"tenant_id":"6200millas","order_id":"ORD-1001"}'
-
-Esperado:
-
-La respuesta debería ser algo como:
-
-{
-  "message": "Evento publicado",
-  "detail": {
-    "tenant_id": "6200millas",
-    "order_id": "ORD-1001",
-    "status": "COCINA_ASIGNADA",
-    "at": "2025-11-08T12:34:56.000000",
-    "mensaje": "Está en cocina"
+#### POST `/productos/id`
+Obtener producto por ID
+```json
+Request: {
+  "local_id": "string",
+  "producto_id": "UUID"
+}
+Response: {
+  "producto": {
+    "local_id": "string",
+    "producto_id": "UUID",
+    "nombre": "string",
+    "precio": number,
+    "descripcion": "string",
+    "categoria": "string",
+    "cantidad": number,
+    "imagen_url": "string"
   }
 }
+```
 
+#### POST `/productos/list`
+Listar productos de un local
+```json
+Request: {
+  "local_id": "string",
+  "limit": number (opcional, default: 50),
+  "start_key": object (opcional, para paginación)
+}
+Response: {
+  "productos": [...],
+  "count": number,
+  "last_evaluated_key": object (si hay más páginas)
+}
+```
 
-Esto significa que el evento fue correctamente publicado en EventBridge.
+#### DELETE `/productos/delete`
+Eliminar producto
+```json
+Request: {
+  "local_id": "string",
+  "producto_id": "UUID"
+}
+Response: {
+  "message": "string"
+}
+```
 
+---
+
+## 4. Pedidos (Clientes)
+
+**Permisos**: Requieren token
+
+#### POST `/pedido/create`
+Crear nuevo pedido
+```json
+Request: {
+  "tenant_id": "string",
+  "local_id": "string",
+  "usuario_correo": "email",
+  "direccion": "string",
+  "costo": number,
+  "estado": "string",
+  "productos": [
+    {
+      "producto_id": "UUID",
+      "nombre": "string",
+      "cantidad": number,
+      "precio": number
+    }
+  ],
+  "fecha_entrega_aproximada": "ISO8601 (opcional)"
+}
+Response: {
+  "message": "string",
+  "pedido": {
+    "pedido_id": "UUID",
+    "tenant_id": "string",
+    ...
+  }
+}
+```
+
+#### GET `/pedido/status?tenant_id=X&pedido_id=Y`
+Obtener estado del pedido
+```json
+Response: {
+  "tenant_id": "string",
+  "pedido_id": "UUID",
+  "estado": "string",
+  "detalles": {...}
+}
+```
+
+#### POST `/pedido/confirmar`
+Confirmar recepción del pedido
+```json
+Request: {
+  "tenant_id": "string",
+  "pedido_id": "UUID"
+}
+Response: {
+  "message": "string",
+  "estado": "recibido"
+}
+```
+
+---
+
+## 5. Workflow de Empleados
+
+**Permisos**: Endpoints para empleados (no requieren token, son internos)
+
+Estos endpoints gatillan eventos en el flujo de Step Functions.
+
+#### POST `/empleados/cocina/iniciar`
+Cocina inicia preparación
+```json
+Request: {
+  "order_id": "UUID",
+  "empleado_id": "string"
+}
+Response: {
+  "message": "EnPreparacion event published",
+  "order_id": "UUID"
+}
+```
+
+#### POST `/empleados/cocina/completar`
+Cocina completa preparación
+```json
+Request: {
+  "order_id": "UUID",
+  "empleado_id": "string"
+}
+Response: {
+  "message": "CocinaCompleta event published",
+  "order_id": "UUID"
+}
+```
+
+#### POST `/empleados/empaque/completar`
+Empaquetado completo
+```json
+Request: {
+  "order_id": "UUID",
+  "empleado_id": "string"
+}
+Response: {
+  "message": "Empaquetado event published",
+  "order_id": "UUID"
+}
+```
+
+#### POST `/empleados/delivery/iniciar`
+Delivery inicia entrega
+```json
+Request: {
+  "order_id": "UUID",
+  "empleado_id": "string"
+}
+Response: {
+  "message": "PedidoEnCamino event published",
+  "order_id": "UUID"
+}
+```
+
+#### POST `/empleados/delivery/entregar`
+Delivery entrega pedido
+```json
+Request: {
+  "order_id": "UUID",
+  "empleado_id": "string"
+}
+Response: {
+  "message": "EntregaDelivery event published",
+  "order_id": "UUID"
+}
+```
+
+#### POST `/empleados/cliente/confirmar`
+Cliente confirma recepción
+```json
+Request: {
+  "order_id": "UUID",
+  "empleado_id": "CLIENTE (opcional)"
+}
+Response: {
+  "message": "ConfirmarPedidoCliente event published",
+  "order_id": "UUID"
+}
+```
+
+---
+
+## 📊 Modelos de Datos
+
+### Usuario
+```typescript
+{
+  correo: string (PK)
+  nombre: string
+  contrasena: string (hashed)
+  role: "Cliente" | "Gerente" | "Admin"
+}
+```
+
+### Empleado
+```typescript
+{
+  local_id: string (PK)
+  dni: string (SK)
+  nombre: string
+  apellido: string
+  role: "Repartidor" | "Cocinero" | "Despachador"
+  ocupado: boolean
+}
+```
+
+### Producto
+```typescript
+{
+  local_id: string (PK)
+  producto_id: UUID (SK)
+  nombre: string
+  precio: number
+  descripcion: string
+  categoria: string
+  cantidad: number
+  imagen_url?: string
+}
+```
+
+### Pedido
+```typescript
+{
+  tenant_id: string (PK)
+  pedido_id: UUID (SK)
+  local_id: string
+  usuario_correo: string
+  direccion: string
+  costo: number
+  estado: string
+  productos: Array<{
+    producto_id: UUID
+    nombre: string
+    cantidad: number
+    precio: number
+  }>
+  fecha_creacion: ISO8601
+  fecha_entrega_aproximada?: ISO8601
+}
+```
+
+---
+
+## 🔄 Estados del Pedido
+
+1. **procesando** - Pedido creado, en cola para cocina
+2. **cocinando** - En preparación en cocina
+3. **empacando** - Siendo empaquetado
+4. **enviando** - En camino con delivery
+5. **recibido** - Entregado y confirmado
+
+---
+
+## ⚠️ Códigos de Error Comunes
+
+- `400` - Bad Request (datos inválidos)
+- `401` - Unauthorized (token inválido/expirado)
+- `403` - Forbidden (sin permisos)
+- `404` - Not Found (recurso no existe)
+- `409` - Conflict (recurso ya existe)
+- `500` - Internal Server Error
+
+---
+
+## 🔑 Categorías de Productos
+
+- Promos Fast
+- Express
+- Promociones
+- Sopas Power
+- Bowls Del Tigre
+- Leche de Tigre
+- Ceviches
+- Fritazo
+- Mostrimar
+- Box Marino
+- Duos Marinos
+- Trios Marinos
+- Dobles
+- Rondas Marinas
+- Mega Marino
+- Familiares
+
+---
+
+## 💡 Notas para Frontend
+
+### Autenticación
+1. Guardar token en localStorage/sessionStorage
+2. Incluir en header: `Authorization: Bearer ${token}`
+3. Renovar token antes de expiración
+4. Limpiar token al logout
+
+### Paginación
+- Usar `start_key` del response anterior para siguiente página
+- `limit` controla items por página
+- Si no hay `last_evaluated_key`, es la última página
+
+### Manejo de Errores
+```javascript
+try {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error desconocido');
+  }
+  return await response.json();
+} catch (error) {
+  // Manejar error
+}
+```
+
+### Workflow de Pedido
+```
+Cliente crea pedido
+  ↓
+Empleado cocina inicia (/empleados/cocina/iniciar)
+  ↓
+Empleado cocina completa (/empleados/cocina/completar)
+  ↓
+Empleado empaque completa (/empleados/empaque/completar)
+  ↓
+Empleado delivery inicia (/empleados/delivery/iniciar)
+  ↓
+Empleado delivery entrega (/empleados/delivery/entregar)
+  ↓
+Cliente confirma (/empleados/cliente/confirmar)
+```

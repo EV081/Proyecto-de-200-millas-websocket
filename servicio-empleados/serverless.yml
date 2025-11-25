@@ -1,0 +1,74 @@
+service: servicio-empleados
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  memorySize: 256
+  timeout: 10
+  iam:
+    role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+  environment:
+    EVENT_BUS_NAME: default
+  httpApi:
+    cors: true
+
+functions:
+  # Kitchen - Start Preparation
+  triggerEnPreparacion:
+    handler: trigger_en_preparacion.handler
+    events:
+      - httpApi:
+          path: /empleados/cocina/iniciar
+          method: POST
+    description: "Trigger EnPreparacion event when kitchen starts preparing order"
+
+  # Kitchen - Complete Cooking
+  triggerCocinaCompleta:
+    handler: trigger_cocina_completa.handler
+    events:
+      - httpApi:
+          path: /empleados/cocina/completar
+          method: POST
+    description: "Trigger CocinaCompleta event when kitchen completes cooking"
+
+  # Packaging - Complete Packaging
+  triggerEmpaquetado:
+    handler: trigger_empaquetado.handler
+    events:
+      - httpApi:
+          path: /empleados/empaque/completar
+          method: POST
+    description: "Trigger Empaquetado event when packaging is complete"
+
+  # Delivery - Start Delivery
+  triggerPedidoEnCamino:
+    handler: trigger_pedido_en_camino.handler
+    events:
+      - httpApi:
+          path: /empleados/delivery/iniciar
+          method: POST
+    description: "Trigger PedidoEnCamino event when delivery starts"
+
+  # Delivery - Deliver Order
+  triggerEntregaDelivery:
+    handler: trigger_entrega_delivery.handler
+    events:
+      - httpApi:
+          path: /empleados/delivery/entregar
+          method: POST
+    description: "Trigger EntregaDelivery event when delivery person delivers order"
+
+  # Client - Confirm Receipt
+  triggerConfirmarCliente:
+    handler: trigger_confirmar_cliente.handler
+    events:
+      - httpApi:
+          path: /empleados/cliente/confirmar
+          method: POST
+    description: "Trigger ConfirmarPedidoCliente event when customer confirms receipt"
+
+package:
+  patterns:
+    - '!**/*'
+    - '*.py'

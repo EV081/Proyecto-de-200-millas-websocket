@@ -1,0 +1,56 @@
+service: service-products
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  stage: ${opt:stage, 'dev'} 
+  memorySize: 256
+  timeout: 20
+  iam:
+    role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+  environment:
+    TOKENS_TABLE_USERS: ${env:TABLE_TOKENS_USUARIOS}
+    PRODUCTS_TABLE: ${env:TABLE_PRODUCTOS}
+    PRODUCTS_BUCKET: ${env:S3_BUCKET_NAME}
+    VALIDAR_TOKEN_LAMBDA_NAME: ${env:VALIDAR_TOKEN_LAMBDA_NAME}
+  layers:
+    - ${cf:millas-dependencias-dev.PythonDependenciesLayerExport}  
+  httpApi:
+    cors: true
+
+functions:
+  CreateProduct:
+    handler: product_create.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /productos/create
+    
+  UpdateProduct: 
+    handler: product_update.lambda_handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /productos/update
+
+  DeleteProduct:
+    handler: product_delete.lambda_handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /productos/delete
+
+  ProductID:
+    handler: product_id.lambda_handler
+    events:
+      - httpApi:
+          method: POST 
+          path: /productos/id
+
+  ListProduct:
+    handler: product_list.lambda_handler
+    events:
+      - httpApi:
+          method: POST
+          path: /productos/list

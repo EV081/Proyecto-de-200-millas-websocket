@@ -1,0 +1,119 @@
+service: service-orders-200-millas
+
+provider:
+  name: aws
+  runtime: python3.13
+  region: us-east-1
+  memorySize: 256
+  timeout: 20
+  iam:
+    role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
+  environment:
+    STATE_MACHINE_ARN: arn:aws:states:us-east-1:${env:AWS_ACCOUNT_ID}:stateMachine:DoscientasMillas
+    TABLE_HISTORIAL_ESTADOS: ${env:TABLE_HISTORIAL_ESTADOS}
+    TABLE_PRODUCTOS: ${env:TABLE_PRODUCTOS}
+    QUEUE_COCINA_URL: !Ref ColaCocina
+    QUEUE_DELIVERY_URL: !Ref ColaDelivery
+    EVENT_BUS_NAME: default # Using default bus as per common Academy setup, or custom if allowed.
+
+functions:
+  # --- Step Function Tasks (Invoked by SF) ---
+  procesarPedido:
+    handler: handlers/procesar_pedido.handler
+  
+  pedidoEnCocina:
+    handler: handlers/pedido_en_cocina.handler
+
+  cocinaCompleta:
+    handler: handlers/cocina_completa.handler
+
+  reintentarCocina:
+    handler: handlers/reintentar_cocina.handler
+
+  empaquetado:
+    handler: handlers/empaquetado.handler
+
+  delivery:
+    handler: handlers/delivery.handler
+
+  reintentarDelivery:
+    handler: handlers/reintentar_delivery.handler
+
+  entregado:
+    handler: handlers/entregado.handler
+
+  entregaCompleta:
+    handler: handlers/entrega_completa.handler
+
+  # --- Control & Events ---
+  startExecution:
+    handler: handlers/start_execution.handler
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - "200millas.pedidos"
+            detail-type:
+              - "CrearPedido"
+
+  cambiarEstado:
+    handler: handlers/cambiar_estado.handler
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - "200millas.cocina"
+              - "200millas.delivery"
+              - "200millas.cliente"
+            detail-type:
+              - "EnPreparacion"
+              - "CocinaCompleta"
+              - "Empaquetado"
+              - "PedidoEnCamino"
+              - "EntregaDelivery"
+              - "ConfirmarPedidoCliente"
+
+  triggerEvent:
+    handler: handlers/trigger_event.handler
+    events:
+      - httpApi:
+          path: /eventos/trigger
+          method: POST
+
+resources:
+  Resources:
+    # SQS Queues
+    ColaCocina:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: Cola_Cocina
+
+    ColaDelivery:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: Cola_Delivery
+
+  Outputs:
+    ProcesarPedidoArn:
+      Value: !GetAtt ProcesarPedidoLambdaFunction.Arn
+    PedidoEnCocinaArn:
+      Value: !GetAtt PedidoEnCocinaLambdaFunction.Arn
+    CocinaCompletaArn:
+      Value: !GetAtt CocinaCompletaLambdaFunction.Arn
+    ReintentarCocinaArn:
+      Value: !GetAtt ReintentarCocinaLambdaFunction.Arn
+    EmpaquetadoArn:
+      Value: !GetAtt EmpaquetadoLambdaFunction.Arn
+    DeliveryArn:
+      Value: !GetAtt DeliveryLambdaFunction.Arn
+    ReintentarDeliveryArn:
+      Value: !GetAtt ReintentarDeliveryLambdaFunction.Arn
+    EntregadoArn:
+      Value: !GetAtt EntregadoLambdaFunction.Arn
+    EntregaCompletaArn:
+      Value: !GetAtt EntregaCompletaLambdaFunction.Arn
+
+package:
+  patterns:
+    - '!**/*'
+    - 'handlers/**/*.py'

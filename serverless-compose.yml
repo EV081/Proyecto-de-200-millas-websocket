@@ -1,0 +1,22 @@
+org: ${env:ORG_NAME}
+app: 200millas-backend
+stage: dev
+
+services:
+  dependencias:
+    path: Dependencias
+
+  service-users:
+    path: users
+    dependsOn:
+      - dependencias
+
+  service-products:
+    path: products
+    dependsOn:
+      - dependencias
+  
+  service-clientes:
+    path: clientes
+    dependsOn:
+      - dependencias
