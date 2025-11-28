@@ -1,6 +1,21 @@
 # 🚀 Instrucciones Rápidas - 200 Millas
 
-## Para Desplegar Todo
+## 🚨 SI TIENES PROBLEMAS AHORA (EventBridge no funciona)
+
+```bash
+bash fix_todo.sh <pedido_id>
+```
+
+Ejemplo:
+```bash
+bash fix_todo.sh 9860824a-04f4-4b7d-b65c-abfae2035dd2
+```
+
+Este script arregla EventBridge y prueba el flujo completo automáticamente.
+
+---
+
+## Para Desplegar Todo (Primera Vez)
 
 ```bash
 bash setup_backend.sh
