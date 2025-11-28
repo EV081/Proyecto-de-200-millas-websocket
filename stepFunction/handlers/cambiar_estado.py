@@ -19,15 +19,26 @@ def decimal_to_number(obj):
     return obj
 
 def handler(event, context):
-    print(f"CambiarEstado Event: {json.dumps(event)}")
+    print("=" * 60)
+    print("🔔 CambiarEstado Lambda INVOKED")
+    print("=" * 60)
+    print(f"Full Event: {json.dumps(event, indent=2)}")
     
     detail = event.get('detail', {})
     detail_type = event.get('detail-type') # e.g. "EnPreparacion", "CocinaCompleta"
+    source = event.get('source')
     order_id = detail.get('order_id')
     
+    print(f"Source: {source}")
+    print(f"Detail-Type: {detail_type}")
+    print(f"Order ID: {order_id}")
+    
     if not order_id:
-        print("No order_id in event")
-        return
+        print("❌ ERROR: No order_id in event")
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'No order_id in event'})
+        }
     
     # Map Event Type to Expected Status in DB to find the token
     # We need to find the LATEST token for this order.
@@ -72,11 +83,21 @@ def handler(event, context):
     }
     
     try:
+        print(f"📤 Sending task success with payload: {json.dumps(output_payload, indent=2)}")
         stepfunctions.send_task_success(
             taskToken=task_token,
             output=json.dumps(output_payload)
         )
-        print("Successfully sent task success")
+        print("✅ Successfully sent task success to Step Function")
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'message': 'Task success sent', 'order_id': order_id})
+        }
     except Exception as e:
-        print(f"Error sending task success: {e}")
-        # If token is invalid (timeout), we might want to handle it, but for now just log.
+        print(f"❌ Error sending task success: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e), 'order_id': order_id})
+        }
