@@ -168,6 +168,71 @@ deploy_infrastructure() {
 }
 
 
+fix_eventbridge_rules() {
+  echo -e "${BLUE}🔧 Configurando EventBridge para Step Functions...${NC}"
+  
+  local LAMBDA_NAME="service-orders-200-millas-dev-cambiarEstado"
+  local RULE_NAME="service-orders-cambiarEstado-manual"
+  local REGION="us-east-1"
+  
+  # Verificar que el Lambda existe
+  if ! aws lambda get-function --function-name "${LAMBDA_NAME}" --region "${REGION}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}   ⚠️  Lambda ${LAMBDA_NAME} no encontrado, saltando configuración de EventBridge${NC}"
+    return 0
+  fi
+  
+  local LAMBDA_ARN=$(aws lambda get-function \
+    --function-name "${LAMBDA_NAME}" \
+    --region "${REGION}" \
+    --query 'Configuration.FunctionArn' \
+    --output text)
+  
+  echo "   Lambda ARN: ${LAMBDA_ARN}"
+  
+  # Eliminar regla anterior si existe
+  if aws events describe-rule --name "${RULE_NAME}" --region "${REGION}" >/dev/null 2>&1; then
+    aws events remove-targets --rule "${RULE_NAME}" --ids "1" --region "${REGION}" 2>/dev/null || true
+    aws events delete-rule --name "${RULE_NAME}" --region "${REGION}" 2>/dev/null || true
+  fi
+  
+  # Crear nueva regla
+  local EVENT_PATTERN='{
+    "source": ["200millas.cocina", "200millas.delivery", "200millas.cliente"],
+    "detail-type": ["EnPreparacion", "CocinaCompleta", "Empaquetado", "PedidoEnCamino", "EntregaDelivery", "ConfirmarPedidoCliente"]
+  }'
+  
+  aws events put-rule \
+    --name "${RULE_NAME}" \
+    --event-pattern "${EVENT_PATTERN}" \
+    --state ENABLED \
+    --description "Rule to trigger cambiarEstado Lambda for order state changes" \
+    --region "${REGION}" >/dev/null
+  
+  # Conectar Lambda a la regla
+  aws events put-targets \
+    --rule "${RULE_NAME}" \
+    --targets "Id"="1","Arn"="${LAMBDA_ARN}" \
+    --region "${REGION}" >/dev/null
+  
+  # Dar permisos al Lambda
+  aws lambda remove-permission \
+    --function-name "${LAMBDA_NAME}" \
+    --statement-id AllowEventBridgeInvokeManual \
+    --region "${REGION}" 2>/dev/null || true
+  
+  local RULE_ARN="arn:aws:events:${REGION}:${AWS_ACCOUNT_ID}:rule/${RULE_NAME}"
+  
+  aws lambda add-permission \
+    --function-name "${LAMBDA_NAME}" \
+    --statement-id AllowEventBridgeInvokeManual \
+    --action lambda:InvokeFunction \
+    --principal events.amazonaws.com \
+    --source-arn "${RULE_ARN}" \
+    --region "${REGION}" >/dev/null 2>&1 || true
+  
+  echo -e "${GREEN}   ✅ EventBridge configurado correctamente${NC}"
+}
+
 deploy_services() {
   echo -e "\n${BLUE}🚀 Desplegando microservicios con Serverless...${NC}"
   prepare_dependencies
@@ -176,6 +241,31 @@ deploy_services() {
   # Desplegar servicios principales
   echo -e "${YELLOW}📦 Desplegando servicios principales...${NC}"
   sls deploy
+  
+  # Desplegar Step Functions
+  if [[ -d "stepFunction" ]]; then
+    echo -e "${YELLOW}⚙️  Desplegando Step Functions...${NC}"
+    pushd stepFunction > /dev/null
+    sls deploy
+    popd > /dev/null
+    echo -e "${GREEN}✅ Step Functions desplegado${NC}"
+    
+    # Configurar EventBridge
+    fix_eventbridge_rules
+  else
+    echo -e "${YELLOW}ℹ️  No se encontró directorio stepFunction, saltando...${NC}"
+  fi
+  
+  # Desplegar servicio de empleados
+  if [[ -d "servicio-empleados" ]]; then
+    echo -e "${YELLOW}👥 Desplegando servicio de empleados...${NC}"
+    pushd servicio-empleados > /dev/null
+    sls deploy
+    popd > /dev/null
+    echo -e "${GREEN}✅ Servicio de empleados desplegado${NC}"
+  else
+    echo -e "${YELLOW}ℹ️  No se encontró directorio servicio-empleados, saltando...${NC}"
+  fi
   
   # Desplegar servicio de analytics
   if [[ -d "analytics" ]]; then
@@ -202,9 +292,18 @@ remove_services() {
     popd > /dev/null
   fi
   
-  # Eliminar Step Functions
+  # Eliminar Step Functions y reglas de EventBridge
   if [[ -d "stepFunction" ]]; then
     echo -e "${YELLOW}Eliminando Step Functions...${NC}"
+    
+    # Eliminar reglas de EventBridge primero
+    local RULE_NAME="service-orders-cambiarEstado-manual"
+    if aws events describe-rule --name "${RULE_NAME}" --region us-east-1 >/dev/null 2>&1; then
+      echo -e "${YELLOW}Eliminando reglas de EventBridge...${NC}"
+      aws events remove-targets --rule "${RULE_NAME}" --ids "1" --region us-east-1 2>/dev/null || true
+      aws events delete-rule --name "${RULE_NAME}" --region us-east-1 2>/dev/null || true
+    fi
+    
     pushd stepFunction > /dev/null
     sls remove || true
     popd > /dev/null

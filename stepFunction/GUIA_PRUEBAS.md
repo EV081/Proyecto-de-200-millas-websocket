@@ -1,3 +1,29 @@
+# 🧪 Guía de Pruebas - Step Functions
+
+## ⚠️ IMPORTANTE: Orden de Ejecución
+
+El Step Function tiene **múltiples estados de espera**. Debes ejecutar los eventos **EN ORDEN** para que avance correctamente.
+
+### 🔄 Flujo Completo
+
+```
+1. Crear Pedido → Step Function inicia
+   ↓
+2. POST /empleados/cocina/iniciar → Avanza a "cocinando"
+   ↓
+3. POST /empleados/cocina/completar → Avanza a "empacando"
+   ↓
+4. POST /empleados/empaque/completar → Avanza a "enviando"
+   ↓
+5. POST /empleados/delivery/iniciar → Avanza a "en camino"
+   ↓
+6. POST /empleados/delivery/entregar → Avanza a "recibido"
+   ↓
+✅ Step Function COMPLETA
+```
+
+---
+
 # Guía de Pruebas - Step Functions Workflow
 
 ## 1. Despliegue Inicial
