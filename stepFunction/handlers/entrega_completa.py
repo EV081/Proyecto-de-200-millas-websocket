@@ -3,6 +3,7 @@ import os
 import boto3
 from datetime import datetime
 from boto3.dynamodb.conditions import Key
+from update_pedido_estado import update_pedido_estado
 
 dynamodb = boto3.resource('dynamodb')
 events = boto3.client('events')
@@ -15,6 +16,10 @@ def handler(event, context):
     input_data = event.get('input', {})
     order_id = input_data.get('order_id')
     empleado_id = input_data.get('empleado_id', 'SYSTEM')
+    local_id = input_data.get('details', {}).get('local_id') or input_data.get('local_id', 'UNKNOWN')
+    
+    # Update Pedidos table
+    update_pedido_estado(order_id, local_id, 'recibido')
     
     # Update previous state's hora_fin
     # Update previous state's hora_fin

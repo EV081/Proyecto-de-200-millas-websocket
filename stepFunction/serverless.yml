@@ -12,6 +12,7 @@ provider:
     STATE_MACHINE_ARN: arn:aws:states:us-east-1:${env:AWS_ACCOUNT_ID}:stateMachine:DoscientasMillas
     TABLE_HISTORIAL_ESTADOS: ${env:TABLE_HISTORIAL_ESTADOS}
     TABLE_PRODUCTOS: ${env:TABLE_PRODUCTOS}
+    TABLE_PEDIDOS: ${env:TABLE_PEDIDOS}
     QUEUE_COCINA_URL: !Ref ColaCocina
     QUEUE_DELIVERY_URL: !Ref ColaDelivery
     EVENT_BUS_NAME: default # Using default bus as per common Academy setup, or custom if allowed.
