@@ -3,6 +3,7 @@ import os
 import boto3
 import uuid
 from datetime import datetime
+from update_pedido_estado import update_pedido_estado
 
 dynamodb = boto3.resource('dynamodb')
 sqs = boto3.client('sqs')
@@ -22,6 +23,10 @@ def handler(event, context):
         str(uuid.uuid4())
     )
     empleado_id = input_data.get('detail', {}).get('empleado_id') or input_data.get('empleado_id', 'SYSTEM')
+    local_id = input_data.get('local_id', 'UNKNOWN')
+    
+    # 0. Update Pedidos table
+    update_pedido_estado(order_id, local_id, 'procesando')
     
     # 1. Enqueue to SQS Cocina
     message_body = {

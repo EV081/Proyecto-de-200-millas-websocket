@@ -31,9 +31,10 @@ functions:
           method: GET
           path: /pedido/status
 
-  ConfirmarRecepcion:
-    handler: confirmar_recepcion.lambda_handler
+  triggerConfirmarCliente:
+    handler: trigger_confirmar_cliente.handler
     events:
       - httpApi:
-          method: POST
           path: /pedido/confirmar
+          method: POST
+    description: "Trigger ConfirmarPedidoCliente event when customer confirms receipt"

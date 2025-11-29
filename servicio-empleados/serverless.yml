@@ -59,15 +59,6 @@ functions:
           method: POST
     description: "Trigger EntregaDelivery event when delivery person delivers order"
 
-  # Client - Confirm Receipt
-  triggerConfirmarCliente:
-    handler: trigger_confirmar_cliente.handler
-    events:
-      - httpApi:
-          path: /empleados/cliente/confirmar
-          method: POST
-    description: "Trigger ConfirmarPedidoCliente event when customer confirms receipt"
-
 package:
   patterns:
     - '!**/*'

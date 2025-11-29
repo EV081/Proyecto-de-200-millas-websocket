@@ -90,18 +90,23 @@ def parse_results(results):
 
 def lambda_handler(event, context):
     """
-    Query: Total de pedidos por local
-    Body: { "local_id": "LOCAL-001" } (opcional)
+    Query: Total de pedidos por local con paginación
+    Query params: 
+        - local_id (opcional): Filtrar por local específico
+        - page (opcional): Número de página (default: 1)
+        - page_size (opcional): Tamaño de página (default: 10, max: 100)
     """
     try:
-        # Parsear body
-        body = {}
-        if event.get('body'):
-            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+        # Parsear query parameters
+        params = event.get('queryStringParameters', {}) or {}
+        local_id = params.get('local_id')
+        page = int(params.get('page', 1))
+        page_size = min(int(params.get('page_size', 10)), 100)  # Max 100 items per page
         
-        local_id = body.get('local_id')
+        # Calculate offset
+        offset = (page - 1) * page_size
         
-        # Query SQL con filtro opcional
+        # Query SQL con filtro opcional y paginación
         if local_id:
             query = f"""
             SELECT 
@@ -113,20 +118,29 @@ def lambda_handler(event, context):
             """
             print(f"Ejecutando query: Total de pedidos para local {local_id}")
         else:
-            query = """
+            query = f"""
             SELECT 
                 local_id,
                 COUNT(*) as total_pedidos
             FROM pedidos
             GROUP BY local_id
             ORDER BY total_pedidos DESC
+            LIMIT {page_size}
+            OFFSET {offset}
             """
-            print("Ejecutando query: Total de pedidos por local (todos)")
+            print(f"Ejecutando query: Total de pedidos por local (página {page}, tamaño {page_size})")
         
         results = execute_athena_query(query)
         
         # Parsear resultados
         data = parse_results(results)
+        
+        # Get total count for pagination metadata
+        total_query = "SELECT COUNT(DISTINCT local_id) as total FROM pedidos"
+        total_results = execute_athena_query(total_query)
+        total_data = parse_results(total_results)
+        total_items = total_data[0]['total'] if total_data else 0
+        total_pages = (total_items + page_size - 1) // page_size
         
         return {
             'statusCode': 200,
@@ -134,6 +148,14 @@ def lambda_handler(event, context):
             'body': json.dumps({
                 'query': 'Total de pedidos por local',
                 'local_id': local_id if local_id else 'todos',
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total_items': total_items,
+                    'total_pages': total_pages,
+                    'has_next': page < total_pages,
+                    'has_prev': page > 1
+                },
                 'data': data
             }, ensure_ascii=False)
         }
